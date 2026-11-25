@@ -66,6 +66,7 @@
   .top-deck {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 10px;
     padding: 10px 12px 12px;
     border-radius: 16px;
@@ -81,7 +82,8 @@
     background: linear-gradient(90deg, transparent, var(--gold-dk) 20%, var(--gold) 50%, var(--gold-dk) 80%, transparent);
     opacity:.6;
   }
-  .logo-block { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+  .logo-block { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; }
+  .logo-block .logo-text { min-width: 0; overflow-wrap: break-word; }
   .hibiscus-svg { flex: 0 0 auto; filter: drop-shadow(0 0 6px rgba(255,90,120,.6)); }
   .logo-text {
     font-weight: 900;
@@ -99,7 +101,22 @@
     text-shadow: 0 0 6px rgba(255,60,70,.7);
     margin-top: 2px;
   }
-  .lamp-strip { display: flex; gap: 5px; align-items: center; }
+  .lamp-strip { display: flex; gap: 5px; align-items: center; flex: 0 0 auto; }
+
+  /* iPhone実機幅（〜430px）でのロゴ・ランプ重なり防止 */
+  @media (max-width: 430px) {
+    .logo-text { font-size: 1.0rem; }
+    .logo-sub { font-size: .56rem; }
+    .hibiscus-svg { width: 38px; height: 38px; }
+    .lamp { width: 13px; height: 13px; }
+    .lamp-strip { gap: 4px; }
+    .logo-block { gap: 6px; }
+  }
+  @media (max-width: 360px) {
+    .logo-text { font-size: .88rem; }
+    .hibiscus-svg { width: 32px; height: 32px; }
+    .lamp { width: 11px; height: 11px; }
+  }
   .lamp {
     width: 15px; height: 15px; border-radius: 50%;
     background: #1a1a20; border: 1px solid #333;
@@ -380,8 +397,8 @@
     font-size:1rem; font-weight:900; cursor:pointer;
   }
   .mini-plus:active { transform:scale(.92); }
-  .lend-chips { display:flex; gap:6px; }
-  .lend-chips .excl-chip { flex:1; }
+  .lend-chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .lend-chips .excl-chip { flex:1 1 30%; min-width:62px; font-size:.62rem; padding:7px 2px; }
 
   /* 履歴モーダル */
   .modal-overlay {
@@ -600,11 +617,19 @@
         </div>
       </div>
       <div class="field-row">
-        <span class="fname">貸出単価(100円)</span>
+        <span class="fname">貸出枚数(1千円)</span>
         <div class="lend-chips" id="lendChips">
-          <button class="excl-chip on" data-lend="46">46枚</button>
-          <button class="excl-chip" data-lend="50">50枚</button>
+          <button class="excl-chip" data-lend="46">20S·46</button>
+          <button class="excl-chip" data-lend="50">20S·50</button>
+          <button class="excl-chip" data-lend="92">10S·92</button>
+          <button class="excl-chip" data-lend="100">10S·100</button>
+          <button class="excl-chip" data-lend="184">5S·184</button>
+          <button class="excl-chip" data-lend="200">5S·200</button>
         </div>
+      </div>
+      <div class="field-row">
+        <span class="fname">カスタム(枚/1千円)</span>
+        <input type="number" id="lendCustom" inputmode="numeric" min="1" placeholder="自由入力">
       </div>
       <div class="field-row">
         <span class="fname">持ちメダル(枚)</span>
@@ -672,7 +697,8 @@
     diffMode: 'direct', // 差枚数入力モード: direct / invest
     investYen: '',      // 投資（千円）
     medals: '',         // 持ちメダル（枚）
-    lendMode: 46,       // 貸出単価（100円あたり枚数）
+    lendMode: 46,       // 貸出枚数（1,000円あたり）プリセット
+    lendCustom: '',     // 貸出枚数カスタム自由入力（1,000円あたり枚数）
     bellPayout: '6',    // ベル単価（枚/回）
     bizMode: 'normal',  // 営業モード: normal / event / flat
     histTable: '',      // 台番号（履歴用）
@@ -1015,12 +1041,17 @@
   });
 
   // ---------- 差枚数モード切替（直接 / 投資・持ちメダル） ----------
+  // 有効な貸出枚数（1,000円あたり）。カスタム入力があればそちらを優先
+  function lendRate() {
+    if (state.lendCustom !== '' && numOf(state.lendCustom) > 0) return numOf(state.lendCustom);
+    return state.lendMode > 0 ? state.lendMode : 46;
+  }
   function effectiveDiff() {
-    // 投資・持ちメダルモード: 投資千円×10(百円)×貸出枚数 = 投資枚数
+    // 投資・持ちメダルモード: 投資千円 × 貸出枚数(1千円あたり) = 投資枚数
     if (state.diffMode === 'invest') {
       const invest = numOf(state.investYen);
       const medals = numOf(state.medals);
-      const investMedals = invest * 10 * state.lendMode;
+      const investMedals = invest * lendRate();
       return medals - investMedals;
     }
     return numOf(state.diffCount);
@@ -1030,9 +1061,10 @@
     if (state.diffMode !== 'invest') return;
     const invest = numOf(state.investYen);
     const medals = numOf(state.medals);
-    const investMedals = invest * 10 * state.lendMode;
+    const investMedals = invest * lendRate();
     const diff = medals - investMedals;
-    el.innerHTML = '投資 ' + investMedals.toLocaleString() + '枚 − 持ち ' + medals.toLocaleString() +
+    el.innerHTML = '投資 ' + invest + '千円 × ' + lendRate() + '枚/1千円 = ' + investMedals.toLocaleString() +
+      '枚 − 持ち ' + medals.toLocaleString() +
       '枚 = 差枚 <b style="color:' + (diff >= 0 ? 'var(--neon)' : '#ff8a95') + '">' +
       (diff >= 0 ? '+' : '') + diff.toLocaleString() + '枚</b>';
   }
@@ -1050,11 +1082,25 @@
   document.querySelectorAll('#lendChips .excl-chip').forEach(btn => {
     btn.addEventListener('click', () => {
       state.lendMode = parseInt(btn.dataset.lend, 10);
+      state.lendCustom = '';               // プリセット選択でカスタムを解除
+      $('lendCustom').value = '';
       document.querySelectorAll('#lendChips .excl-chip').forEach(b => b.classList.toggle('on', b === btn));
       sfxTap(true);
       updateInvestResult();
       updateDiffResult();
+      save();
     });
+  });
+  $('lendCustom').addEventListener('input', e => {
+    state.lendCustom = e.target.value;
+    // カスタム入力中はプリセットの選択表示を全解除
+    if (state.lendCustom !== '') {
+      document.querySelectorAll('#lendChips .excl-chip').forEach(b => b.classList.remove('on'));
+    } else {
+      document.querySelectorAll('#lendChips .excl-chip').forEach(b =>
+        b.classList.toggle('on', parseInt(b.dataset.lend, 10) === state.lendMode));
+    }
+    updateInvestResult(); updateDiffResult(); save();
   });
   $('investPlus').addEventListener('click', () => {
     state.investYen = numOf(state.investYen) + 1;
@@ -1086,7 +1132,7 @@
   };
   // 投入枚数（機械割・差枚計算の共通ソース）
   function investMedalsCount() {
-    if (state.diffMode === 'invest') return numOf(state.investYen) * 10 * state.lendMode;
+    if (state.diffMode === 'invest') return numOf(state.investYen) * lendRate();
     return numOf(state.inputMedals);
   }
   // ベル推定の内訳を計算して返す
@@ -1421,7 +1467,7 @@
       if (d.bizMode) state.bizMode = d.bizMode;
       if (d.diffCount !== undefined) state.diffCount = d.diffCount;
       if (d.bellPayout !== undefined) state.bellPayout = d.bellPayout;
-      ['diffMode','investYen','medals','lendMode','histTable','histMemo','autoExEnabled','inputMedals'].forEach(k => {
+      ['diffMode','investYen','medals','lendMode','lendCustom','histTable','histMemo','autoExEnabled','inputMedals'].forEach(k => {
         if (d[k] !== undefined) state[k] = d[k];
       });
       if (d.lamps) {
@@ -1461,6 +1507,7 @@
   $('investYen').value = state.investYen;
   $('medals').value = state.medals;
   $('inputMedals').value = state.inputMedals;
+  $('lendCustom').value = state.lendCustom || '';
   $('histTable').value = state.histTable;
   $('histMemo').value = state.histMemo;
   $('autoExChip').classList.toggle('on', state.autoExEnabled !== false);
@@ -1469,7 +1516,8 @@
   document.querySelectorAll('#diffModeBar .tab').forEach(b => b.classList.toggle('on', b.dataset.dm === state.diffMode));
   $('diffDirect').style.display = state.diffMode === 'direct' ? '' : 'none';
   $('diffInvest').style.display = state.diffMode === 'invest' ? '' : 'none';
-  document.querySelectorAll('#lendChips .excl-chip').forEach(b => b.classList.toggle('on', parseInt(b.dataset.lend, 10) === state.lendMode));
+  document.querySelectorAll('#lendChips .excl-chip').forEach(b =>
+    b.classList.toggle('on', state.lendCustom === '' && parseInt(b.dataset.lend, 10) === state.lendMode));
   writeFields();
   refreshMuteBtn();
   update();
