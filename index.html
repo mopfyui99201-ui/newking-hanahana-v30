@@ -323,6 +323,69 @@
     font-size:.75rem; font-weight:800; letter-spacing:.1em; cursor:pointer;
   }
   .btn-apply:active { transform:scale(.97); }
+
+  /* 信頼度メーター */
+  .conf-meter {
+    position:relative; height:16px; margin: 0 0 10px;
+    background:rgba(10,16,30,.8); border:1px solid #14233d; border-radius:8px; overflow:hidden;
+  }
+  .conf-fill {
+    height:100%; width:0%; border-radius:7px;
+    background:linear-gradient(90deg,#3a5a8a,#35e0c8);
+    transition:width .5s cubic-bezier(.22,1,.36,1);
+    box-shadow:0 0 8px rgba(53,224,200,.4);
+  }
+  .conf-label {
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:.58rem; font-weight:800; letter-spacing:.1em; color:#cfe0ff;
+    text-shadow:0 1px 2px #000;
+  }
+
+  /* 設定バーの%表示（見切れ防止でバー外右側に固定幅） */
+  .set-row { display:flex; align-items:center; gap:6px; margin-bottom:7px; }
+  .set-row .sname { flex:0 0 50px; font-size:.72rem; font-weight:700; color:var(--txt); }
+  .bar-wrap { flex:1; height:18px; background:rgba(10,16,30,.8); border:1px solid #14233d; border-radius:5px; overflow:hidden; }
+  .bar-pct { flex:0 0 42px; text-align:right; font-size:.72rem; font-weight:800; font-variant-numeric:tabular-nums; color:#dff3ff; }
+
+  /* ナビ目安行 */
+  .nav-hint {
+    margin-top:10px; padding:8px 10px; border-radius:8px; text-align:center;
+    background:rgba(245,197,66,.08); border:1px solid rgba(245,197,66,.3);
+    font-size:.7rem; color:var(--gold-hi); font-weight:700; line-height:1.5;
+  }
+  .nav-hint b { color:#ffe9a3; }
+
+  /* 投資入力ステッパー */
+  .invest-row { display:flex; gap:6px; align-items:center; }
+  .invest-row input { flex:1; }
+  .mini-plus {
+    flex:0 0 44px; padding:10px 0; border:none; border-radius:8px;
+    background:linear-gradient(180deg,var(--neon),#1fae85); color:#04121a;
+    font-size:1rem; font-weight:900; cursor:pointer;
+  }
+  .mini-plus:active { transform:scale(.92); }
+  .lend-chips { display:flex; gap:6px; }
+  .lend-chips .excl-chip { flex:1; }
+
+  /* 履歴モーダル */
+  .modal-overlay {
+    position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.75);
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-box {
+    width:100%; max-width:400px; max-height:75vh; overflow-y:auto;
+    background:linear-gradient(180deg,#1e1e26,#121218); border:2px solid var(--gold-dk);
+    border-radius:16px; padding:16px; box-shadow:0 10px 40px rgba(0,0,0,.8);
+  }
+  .modal-title { text-align:center; font-size:.8rem; font-weight:900; letter-spacing:.2em; color:var(--gold); margin-bottom:12px; }
+  .hist-item {
+    background:#0c0d12; border:1px solid #2c2c38; border-radius:10px;
+    padding:10px; margin-bottom:8px; font-size:.72rem; line-height:1.7;
+  }
+  .hist-item .h-top { display:flex; justify-content:space-between; font-weight:800; color:var(--gold-hi); }
+  .hist-item .h-sub { color:var(--sub); font-variant-numeric:tabular-nums; }
+  .hist-item .h-pct { color:var(--neon); font-weight:800; }
+  .hist-empty { text-align:center; color:var(--sub); font-size:.75rem; padding:20px 0; }
 </style>
 </head>
 <body>
@@ -376,7 +439,9 @@
           <span class="t">設定期待度</span>
           <span class="h">タップで除外 / 下部パネルでも可</span>
         </div>
+        <div class="conf-meter"><div class="conf-fill" id="confFill"></div><span class="conf-label" id="confLabel">信頼度 --</span></div>
         <div id="settingRows"></div>
+        <div class="nav-hint" id="navHint">データを入力すると次の目標目安を表示します</div>
       </div>
     </div>
   </div>
@@ -451,10 +516,37 @@
       </div>
     </div>
 
-    <div class="lamp-sec-title">ベル確率 逆算補助（差枚数）</div>
-    <div class="field-row">
-      <span class="fname">差枚数(枚)</span>
-      <input type="number" id="diffCount" inputmode="numeric" placeholder="例: +1200">
+    <div class="lamp-sec-title">差枚数・ベル逆算</div>
+    <div class="tab-bar" id="diffModeBar">
+      <button class="tab on" data-dm="direct">差枚数直接</button>
+      <button class="tab" data-dm="invest">投資・持ちメダル</button>
+    </div>
+    <div id="diffDirect">
+      <div class="field-row">
+        <span class="fname">差枚数(枚)</span>
+        <input type="number" id="diffCount" inputmode="numeric" placeholder="例: +1200">
+      </div>
+    </div>
+    <div id="diffInvest" style="display:none">
+      <div class="field-row">
+        <span class="fname">投資(千円)</span>
+        <div class="invest-row">
+          <input type="number" id="investYen" inputmode="numeric" min="0" placeholder="0">
+          <button class="mini-plus" id="investPlus">+1</button>
+        </div>
+      </div>
+      <div class="field-row">
+        <span class="fname">貸出単価(100円)</span>
+        <div class="lend-chips" id="lendChips">
+          <button class="excl-chip on" data-lend="46">46枚</button>
+          <button class="excl-chip" data-lend="50">50枚</button>
+        </div>
+      </div>
+      <div class="field-row">
+        <span class="fname">持ちメダル(枚)</span>
+        <input type="number" id="medals" inputmode="numeric" min="0" placeholder="0">
+      </div>
+      <div class="diff-result" id="investResult">投資・持ちメダルから差枚数を自動計算します</div>
     </div>
     <div class="field-row">
       <span class="fname">ベル単価(枚/回)</span>
@@ -466,10 +558,33 @@
     <div class="lamp-sec-title">設定除外</div>
     <div class="excl-grid" id="exclGrid"></div>
 
+    <div class="lamp-sec-title">本日の実戦履歴</div>
+    <div class="field-row">
+      <span class="fname">台番号</span>
+      <input type="text" id="histTable" inputmode="numeric" placeholder="例: 1234">
+    </div>
+    <div class="field-row">
+      <span class="fname">メモ</span>
+      <input type="text" id="histMemo" placeholder="任意">
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-apply" id="histSave" style="flex:1;">履歴に保存</button>
+      <button class="btn-apply" id="histView" style="flex:1;background:linear-gradient(180deg,#5a4a8a,#3a2a5c);">履歴一覧</button>
+    </div>
+
     <button class="btn-reset" id="resetBtn">リセット</button>
     <div class="saved-note" id="savedNote">入力は自動保存されます</div>
   </div>
 </div>
+</div>
+
+<!-- 履歴一覧モーダル -->
+<div class="modal-overlay" id="histModal" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-title">保存履歴</div>
+    <div id="histList"></div>
+    <button class="btn-apply" id="histClose">閉じる</button>
+  </div>
 </div>
 
 <script src="calc.js"></script>
@@ -487,8 +602,14 @@
       prev: { startG:'', currentG:'', totalG:'', big:0, reg:0, bell:'' }
     },
     diffCount: '',      // 差枚数（枚）
+    diffMode: 'direct', // 差枚数入力モード: direct / invest
+    investYen: '',      // 投資（千円）
+    medals: '',         // 持ちメダル（枚）
+    lendMode: 46,       // 貸出単価（100円あたり枚数）
     bellPayout: '6',    // ベル単価（枚/回）
     bizMode: 'normal',  // 営業モード: normal / event / flat
+    histTable: '',      // 台番号（履歴用）
+    histMemo: '',       // メモ（履歴用）
     lamps: {
       hibiscusBig: { white:0, blue:0, yellow:0, green:0, purple:0, rainbow:0 },
       hibiscusReg: { white:0, blue:0, yellow:0, green:0, purple:0, rainbow:0 },
@@ -729,7 +850,8 @@
       row.className = 'set-row' + (state.excluded[key] ? ' excluded' : '');
       row.innerHTML =
         '<span class="sname">' + s.name + '</span>' +
-        '<div class="bar-wrap"><div class="bar-fill" id="bar_' + key + '" style="background:' + NEON[i % NEON.length] + '"></div></div>';
+        '<div class="bar-wrap"><div class="bar-fill" id="bar_' + key + '" style="background:' + NEON[i % NEON.length] + '"></div></div>' +
+        '<span class="bar-pct" id="pct_' + key + '">0.0%</span>';
       rows.appendChild(row);
 
       const chip = document.createElement('button');
@@ -796,16 +918,73 @@
     });
   });
 
+  // ---------- 差枚数モード切替（直接 / 投資・持ちメダル） ----------
+  function effectiveDiff() {
+    // 投資・持ちメダルモード: 投資千円×10(百円)×貸出枚数 = 投資枚数
+    if (state.diffMode === 'invest') {
+      const invest = numOf(state.investYen);
+      const medals = numOf(state.medals);
+      const investMedals = invest * 10 * state.lendMode;
+      return medals - investMedals;
+    }
+    return numOf(state.diffCount);
+  }
+  function updateInvestResult() {
+    const el = $('investResult');
+    if (state.diffMode !== 'invest') return;
+    const invest = numOf(state.investYen);
+    const medals = numOf(state.medals);
+    const investMedals = invest * 10 * state.lendMode;
+    const diff = medals - investMedals;
+    el.innerHTML = '投資 ' + investMedals.toLocaleString() + '枚 − 持ち ' + medals.toLocaleString() +
+      '枚 = 差枚 <b style="color:' + (diff >= 0 ? 'var(--neon)' : '#ff8a95') + '">' +
+      (diff >= 0 ? '+' : '') + diff.toLocaleString() + '枚</b>';
+  }
+
+  document.querySelectorAll('#diffModeBar .tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.diffMode = btn.dataset.dm;
+      document.querySelectorAll('#diffModeBar .tab').forEach(b => b.classList.toggle('on', b === btn));
+      $('diffDirect').style.display = state.diffMode === 'direct' ? '' : 'none';
+      $('diffInvest').style.display = state.diffMode === 'invest' ? '' : 'none';
+      sfxTap(true);
+      update();
+    });
+  });
+  document.querySelectorAll('#lendChips .excl-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.lendMode = parseInt(btn.dataset.lend, 10);
+      document.querySelectorAll('#lendChips .excl-chip').forEach(b => b.classList.toggle('on', b === btn));
+      sfxTap(true);
+      updateInvestResult();
+      updateDiffResult();
+    });
+  });
+  $('investPlus').addEventListener('click', () => {
+    state.investYen = numOf(state.investYen) + 1;
+    $('investYen').value = state.investYen;
+    sfxTap();
+    updateInvestResult(); updateDiffResult(); save();
+  });
+  $('investYen').addEventListener('input', e => { state.investYen = e.target.value; updateInvestResult(); updateDiffResult(); save(); });
+  $('medals').addEventListener('input', e => { state.medals = e.target.value; updateInvestResult(); updateDiffResult(); save(); });
+
   // ---------- ベル確率 逆算補助（差枚数） ----------
   // 最新実戦平均獲得枚数: BIG 1回=312枚 / REG 1回=130枚
   const BIG_PAYOUT = 312, REG_PAYOUT = 130;
   function updateDiffResult() {
-    const diff = numOf($('diffCount').value);
+    const diff = effectiveDiff();
     const payout = Math.max(1, numOf($('bellPayout').value) || 6);
     const d = activeData();
     const el = $('diffResult');
-    if (diff === 0 && $('diffCount').value === '') { el.innerHTML = '差枚数を入力するとベル確率を推定します'; return; }
-    if (diff <= 0) { el.innerHTML = '差枚数が0以下です'; return; }
+    if (state.diffMode === 'invest' && state.investYen === '' && state.medals === '') {
+      el.innerHTML = '投資・持ちメダルを入力すると差枚数を自動計算します'; return;
+    }
+    if (state.diffMode === 'direct' && $('diffCount').value === '') {
+      el.innerHTML = '差枚数を入力するとベル確率を推定します'; return;
+    }
+    if (diff === 0) { el.innerHTML = '差枚数が0です'; return; }
+    if (diff < 0) { el.innerHTML = '差枚数がマイナス（' + diff.toLocaleString() + '枚）です'; return; }
     if (d.totalG <= 0) { el.innerHTML = '総ゲーム数が不足しています'; return; }
     const bonusGain = numOf(d.big) * BIG_PAYOUT + numOf(d.reg) * REG_PAYOUT;
     const bellMedals = diff - bonusGain;
@@ -820,7 +999,7 @@
   $('diffCount').addEventListener('input', () => { state.diffCount = $('diffCount').value; updateDiffResult(); save(); });
   $('bellPayout').addEventListener('input', () => { state.bellPayout = $('bellPayout').value; updateDiffResult(); save(); });
   $('applyBell').addEventListener('click', () => {
-    const diff = numOf($('diffCount').value);
+    const diff = effectiveDiff();
     const payout = Math.max(1, numOf($('bellPayout').value) || 6);
     const d = activeData();
     if (diff <= 0 || d.totalG <= 0) { updateDiffResult(); return; }
@@ -836,6 +1015,74 @@
     sfxChime(false);
     update();
   });
+
+  // ---------- 本日の実戦履歴 ----------
+  const LS_HISTORY = 'hanahana-v30-history';
+  function getHistory() {
+    try { return JSON.parse(localStorage.getItem(LS_HISTORY)) || []; }
+    catch (e) { return []; }
+  }
+  function renderHistory() {
+    const list = $('histList');
+    const h = getHistory();
+    if (h.length === 0) {
+      list.innerHTML = '<div class="hist-empty">保存された履歴はありません</div>';
+      return;
+    }
+    list.innerHTML = h.slice().reverse().map((r, i) => {
+      const idx = h.length - 1 - i;
+      const dt = r.date ? new Date(r.date).toLocaleString('ja-JP', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+      return '<div class="hist-item">' +
+        '<div class="h-top"><span>台 ' + (r.table || '—') + ' ' + (r.memo ? '／ ' + r.memo : '') + '</span>' +
+        '<button class="mini-plus" style="flex:0 0 52px;font-size:.62rem;padding:5px 0;" data-hdel="' + idx + '">削除</button></div>' +
+        '<div class="h-sub">' + dt + ' ／ 総G ' + (r.totalG || 0).toLocaleString() +
+        ' ／ BIG ' + (r.big || 0) + ' ／ REG ' + (r.reg || 0) + ' ／ ベル ' + (r.bell || '—') + '</div>' +
+        '<div>最終期待度: <span class="h-pct">' + (r.topName || '—') + ' ' + (r.topPct != null ? r.topPct.toFixed(1) : '—') + '%</span></div>' +
+        '</div>';
+    }).join('');
+    list.querySelectorAll('[data-hdel]').forEach(b => {
+      b.addEventListener('click', () => {
+        const arr = getHistory();
+        arr.splice(parseInt(b.dataset.hdel, 10), 1);
+        localStorage.setItem(LS_HISTORY, JSON.stringify(arr));
+        renderHistory();
+      });
+    });
+  }
+  $('histSave').addEventListener('click', () => {
+    const d = activeData();
+    // 現在の最有力設定を取得
+    const excluded = HanahanaCalc.SETTING_ORDER.filter(k => state.excluded[k]);
+    const { probabilities } = HanahanaCalc.calculateHanahanaProbabilities(
+      { totalG: d.totalG, big: d.big, reg: d.reg, bell: d.bell, lamps: state.lamps },
+      { excluded, bizMode: state.bizMode });
+    let topKey = HanahanaCalc.SETTING_ORDER[0], topP = 0;
+    HanahanaCalc.SETTING_ORDER.forEach(k => {
+      if ((probabilities[k] || 0) > topP) { topP = probabilities[k] || 0; topKey = k; }
+    });
+    const rec = {
+      date: new Date().toISOString(),
+      table: $('histTable').value.trim(),
+      memo: $('histMemo').value.trim(),
+      totalG: d.totalG, big: d.big, reg: d.reg,
+      bell: d.bell == null ? null : d.bell,
+      topName: HanahanaCalc.HANAHANA_SETTINGS[topKey].name,
+      topPct: topP * 100,
+      bizMode: state.bizMode
+    };
+    const h = getHistory();
+    h.push(rec);
+    try { localStorage.setItem(LS_HISTORY, JSON.stringify(h)); } catch (e) {}
+    sfxChime(false);
+    $('histTable').value = ''; $('histMemo').value = '';
+    state.histTable = ''; state.histMemo = '';
+    alert('履歴に保存しました（' + rec.topName + ' ' + rec.topPct.toFixed(1) + '%）');
+  });
+  $('histView').addEventListener('click', () => { renderHistory(); $('histModal').style.display = 'flex'; sfxTap(true); });
+  $('histClose').addEventListener('click', () => { $('histModal').style.display = 'none'; });
+  $('histModal').addEventListener('click', e => { if (e.target === $('histModal')) $('histModal').style.display = 'none'; });
+  $('histTable').addEventListener('input', e => { state.histTable = e.target.value; });
+  $('histMemo').addEventListener('input', e => { state.histMemo = e.target.value; });
 
   // ---------- スイカ・特殊点滅・レトロサウンド ----------
   document.querySelectorAll('[data-suika]').forEach(btn => {
@@ -861,6 +1108,34 @@
   function observedFreq(total, count) {
     if (!total || total <= 0) return null;
     return total / Math.max(0, count);
+  }
+
+  // 設定4・V合算50%到達までの必要ボーナス目安（BIG/REGそれぞれで試行）
+  function computeNavHint(d, probabilities) {
+    const cur = (probabilities.setting4 || 0) + (probabilities.settingV || 0);
+    if (cur >= 0.5) return '設定4・V期待度は既に <b>50%超</b> です';
+    if (d.totalG <= 0 && d.big + d.reg === 0) return 'データを入力すると次の目標目安を表示します';
+    const excluded = HanahanaCalc.SETTING_ORDER.filter(k => state.excluded[k]);
+    const target = r => (r.probabilities.setting4 || 0) + (r.probabilities.settingV || 0);
+    let best = null;
+    for (const kind of ['big', 'reg']) {
+      const base = kind === 'big' ? d.big : d.reg;
+      for (let b = 1; b <= 120; b++) {
+        const big = kind === 'big' ? base + b : d.big;
+        const reg = kind === 'reg' ? base + b : d.reg;
+        const r = HanahanaCalc.calculateHanahanaProbabilities(
+          { totalG: d.totalG, big, reg, bell: d.bell, lamps: state.lamps },
+          { excluded, bizMode: state.bizMode });
+        const p = target(r);
+        if (p >= 0.5) {
+          if (!best || b < best.b) best = { kind, b, p };
+          break;
+        }
+      }
+    }
+    if (!best) return '現状の傾向では設定4・V 50%到達は見込めません';
+    const label = best.kind === 'big' ? 'BIG' : 'REG';
+    return 'あと <b>' + label + best.b + '回</b> で設定4・V期待度 <b>50%到達</b>（試算 ' + (best.p * 100).toFixed(0) + '%）';
   }
 
   function update() {
@@ -893,7 +1168,7 @@
       bell: d.bell,
       lamps: state.lamps
     };
-    const { probabilities, autoExcluded } = HanahanaCalc.calculateHanahanaProbabilities(calcState, {
+    const { probabilities, autoExcluded, confidence } = HanahanaCalc.calculateHanahanaProbabilities(calcState, {
       excluded, bizMode: state.bizMode
     });
 
@@ -903,12 +1178,25 @@
       const bar = $('bar_' + key);
       if (bar) {
         bar.style.width = pct + '%';
-        bar.dataset.pct = pct + '%';
         const auto = autoExcluded.includes(key);
         bar.classList.toggle('dim', state.excluded[key] || auto);
         bar.style.background = NEON[i % NEON.length];
       }
+      const pctEl = $('pct_' + key);
+      if (pctEl) {
+        pctEl.textContent = pct + '%';
+        pctEl.style.color = (state.excluded[key] || autoExcluded.includes(key)) ? '#5a5a64' : '#dff3ff';
+      }
     });
+
+    // 信頼度メーター
+    const confPct = Math.round((confidence || 0) * 100);
+    $('confFill').style.width = confPct + '%';
+    $('confLabel').textContent = '判別信頼度 ' + confPct + '%（' +
+      (confPct < 40 ? '低信頼・序盤' : confPct < 75 ? '中信頼' : '高信頼') + '）';
+
+    // ナビ目安: 設定4・V合算50%到達までの必要ボーナス数
+    $('navHint').innerHTML = computeNavHint(d, probabilities);
 
     // 判定バッジ: 最高期待度の設定から 続行推奨/様子見/ヤメ時注意 を判定
     const badge = $('verdictBadge');
@@ -934,6 +1222,7 @@
       }
     }
 
+    updateInvestResult();
     updateDiffResult();
     syncTopLamps();
     save();
@@ -965,6 +1254,9 @@
       if (d.bizMode) state.bizMode = d.bizMode;
       if (d.diffCount !== undefined) state.diffCount = d.diffCount;
       if (d.bellPayout !== undefined) state.bellPayout = d.bellPayout;
+      ['diffMode','investYen','medals','lendMode','histTable','histMemo'].forEach(k => {
+        if (d[k] !== undefined) state[k] = d[k];
+      });
       if (d.lamps) {
         const L = d.lamps;
         // 旧形式 hibiscus{...} → hibiscusBig へ移行
@@ -999,6 +1291,15 @@
   document.querySelectorAll('#bizBar .tab').forEach(b => b.classList.toggle('on', b.dataset.biz === state.bizMode));
   $('diffCount').value = state.diffCount;
   $('bellPayout').value = state.bellPayout;
+  $('investYen').value = state.investYen;
+  $('medals').value = state.medals;
+  $('histTable').value = state.histTable;
+  $('histMemo').value = state.histMemo;
+  // 差枚数モード・貸出単価UIを復元
+  document.querySelectorAll('#diffModeBar .tab').forEach(b => b.classList.toggle('on', b.dataset.dm === state.diffMode));
+  $('diffDirect').style.display = state.diffMode === 'direct' ? '' : 'none';
+  $('diffInvest').style.display = state.diffMode === 'invest' ? '' : 'none';
+  document.querySelectorAll('#lendChips .excl-chip').forEach(b => b.classList.toggle('on', parseInt(b.dataset.lend, 10) === state.lendMode));
   writeFields();
   refreshMuteBtn();
   update();
