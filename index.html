@@ -273,6 +273,19 @@
   }
   .btn-reset:active { transform:scale(.97); }
   .saved-note { text-align:center; font-size:.6rem; color:#4a4a55; margin-top:8px; }
+
+  /* 消音ボタン（画面右上・ホール実戦対応） */
+  .mute-btn {
+    position: fixed; top: calc(10px + env(safe-area-inset-top)); right: 10px; z-index: 99;
+    padding: 9px 14px; border-radius: 20px;
+    border: 2px solid #4a3a14;
+    background: linear-gradient(180deg, #2a2a32, #14141a);
+    color: var(--txt); font-size: .78rem; font-weight: 800; letter-spacing: .05em;
+    cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.12);
+  }
+  .mute-btn:active { transform: scale(.93); }
+  .mute-btn.muted { border-color: #5a3a3a; color: #c9a0a0; }
+  .mute-btn.unmuted { border-color: var(--neon); color: var(--neon); box-shadow: 0 0 12px rgba(77,255,184,.35); }
 </style>
 </head>
 <body>
@@ -296,6 +309,8 @@
     </g>
   </defs>
 </svg>
+
+<button class="mute-btn muted" id="muteBtn">🔇 消音</button>
 
 <div class="cabinet">
 <div class="cabinet-inner">
@@ -416,6 +431,83 @@
   // ハイビスカスカウントキー → トップランプキー（redは虹に近い赤として赤ランプへ）
   const HIB_TO_TOP = { white:'white', blue:'blue', yellow:'yellow', green:'green', purple:'purple', rainbow:'rainbow' };
 
+  /* ============ Web Audio API 効果音（全てリアルタイム合成・著作権フリー） ============ */
+  const LS_MUTE = 'hanahana-v30-muted';
+  let audioCtx = null, masterGain = null;
+  // 安全のためデフォルトは消音。'0' が保存されていれば音ON
+  let muted = localStorage.getItem(LS_MUTE) !== '0';
+
+  function ensureAudio() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      audioCtx = new AC();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = muted ? 0 : 1;
+      masterGain.connect(audioCtx.destination);
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+
+  function tone(freq, t0, dur, type, vol, slideTo) {
+    const ctx = audioCtx;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t0);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(masterGain);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+
+  // リール停止ボタン風の軽快なタップ音
+  function sfxTap(soft) {
+    if (muted) return;
+    const ctx = ensureAudio(); if (!ctx) return;
+    const t = ctx.currentTime;
+    tone(soft ? 900 : 1350, t, 0.06, 'square', soft ? 0.08 : 0.13, soft ? 500 : 750);
+    tone(2400, t, 0.03, 'sine', 0.05);
+  }
+
+  // ハイビスカス点灯風キラキラチャイム。fancy=trueで虹・紫などの豪華な上昇和音
+  function sfxChime(fancy) {
+    if (muted) return;
+    const ctx = ensureAudio(); if (!ctx) return;
+    const t0 = ctx.currentTime;
+    const notes = fancy
+      ? [1046.5, 1318.5, 1568.0, 2093.0, 2637.0]   // C6 E6 G6 C7 E7 の豪華アルペジオ
+      : [1318.5, 1568.0, 2093.0];                  // E6 G6 C7
+    notes.forEach((f, i) => tone(f, t0 + i * 0.065, 0.45, 'sine', 0.14));
+    if (fancy) tone(4186, t0 + notes.length * 0.065, 0.5, 'sine', 0.07); // キラッとした高音の余韻
+  }
+
+  // リセット時の下降クリアトーン
+  function sfxClear() {
+    if (muted) return;
+    const ctx = ensureAudio(); if (!ctx) return;
+    const t = ctx.currentTime;
+    tone(880, t, 0.18, 'triangle', 0.15, 660);
+    tone(660, t + 0.16, 0.18, 'triangle', 0.15, 440);
+    tone(440, t + 0.32, 0.35, 'triangle', 0.12, 220);
+  }
+
+  function refreshMuteBtn() {
+    const b = $('muteBtn');
+    b.textContent = muted ? '🔇 消音' : '🔊 音ON';
+    b.classList.toggle('muted', muted);
+    b.classList.toggle('unmuted', !muted);
+    if (masterGain) masterGain.gain.value = muted ? 0 : 1;
+  }
+  $('muteBtn').addEventListener('click', () => {
+    muted = !muted;
+    try { localStorage.setItem(LS_MUTE, muted ? '1' : '0'); } catch (e) {}
+    refreshMuteBtn();
+    if (!muted) sfxTap(); // ONにした瞬間に確認音
+  });
+
   function colorLabel(c) {
     return { white:'白', blue:'青', yellow:'黄', green:'緑', purple:'紫', red:'赤' }[c] || c;
   }
@@ -467,6 +559,13 @@
         state.lamps[lampKey][color] = Math.max(0, (state.lamps[lampKey][color] || 0) + delta);
         btn.querySelector('.cnt').textContent = state.lamps[lampKey][color];
         btn.classList.toggle('zero', state.lamps[lampKey][color] === 0);
+        // +1: 色に応じたチャイム（赤・紫・虹は豪華版）。-1: ソフトタップ
+        if (delta > 0) {
+          const fancy = color === 'purple' || color === 'rainbow' || color === 'red';
+          sfxChime(fancy);
+        } else {
+          sfxTap(true);
+        }
         update();
       };
       btn.addEventListener('click', () => bump(1));
@@ -508,6 +607,7 @@
         state.excluded[key] = !state.excluded[key];
         chip.classList.toggle('on', state.excluded[key]);
         row.classList.toggle('excluded', state.excluded[key]);
+        sfxTap(true);
         update();
       });
       chips.appendChild(chip);
@@ -521,6 +621,7 @@
       const cur = state[key] === '' ? 0 : (parseInt(state[key], 10) || 0);
       state[key] = Math.max(0, cur + parseInt(btn.dataset.d, 10));
       $('num_' + key).value = state[key] === '' ? 0 : state[key];
+      sfxTap(); // リール停止ボタン風タップ音
       update();
     });
   });
@@ -539,7 +640,9 @@
   document.querySelectorAll('[data-suika]').forEach(btn => {
     btn.addEventListener('click', () => {
       const which = btn.dataset.suika === 'reg' ? 'regSuika' : 'bigSuika';
-      state.lamps[which] = Math.max(0, (state.lamps[which] || 0) + parseInt(btn.dataset.d, 10));
+      const d = parseInt(btn.dataset.d, 10);
+      state.lamps[which] = Math.max(0, (state.lamps[which] || 0) + d);
+      if (d > 0) sfxChime(true); else sfxTap(true); // スイカは高設定示唆扱い
       update();
     });
   });
@@ -626,6 +729,7 @@
 
   $('resetBtn').addEventListener('click', () => {
     if (!confirm('全データをリセットしますか？\n（localStorageも消去されます）')) return;
+    sfxClear(); // 下降クリアトーン
     localStorage.removeItem(LS_KEY);
     location.reload();
   });
@@ -642,6 +746,7 @@
   $('num_big').value = state.big === '' ? '' : state.big;
   $('num_reg').value = state.reg === '' ? '' : state.reg;
   $('num_bell').value = state.bell === '' ? '' : state.bell;
+  refreshMuteBtn();
   update();
 })();
 </script>
