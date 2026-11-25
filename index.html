@@ -375,6 +375,55 @@
   }
   .admin-bar button:active { transform: scale(.93); }
 
+  /* ===== 管理者ローカルモード専用 左サイド管理ドロワー =====
+     ※ JS側で isLocalAdmin の時だけDOM生成。公開版では一切描画されない */
+  #adminDrawer { position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; display: flex; }
+  #drawerTab {
+    width: 34px; align-self: center; margin-left: 4px;
+    writing-mode: vertical-rl; padding: 14px 6px; border-radius: 0 12px 12px 0;
+    border: 2px solid var(--gold-dk); border-left: none;
+    background: linear-gradient(180deg,#241c0c,#120e06);
+    color: var(--gold-hi); font-size: .68rem; font-weight: 900; letter-spacing: .15em;
+    cursor: pointer; box-shadow: 2px 0 10px rgba(0,0,0,.55);
+  }
+  #drawerPanel {
+    width: 0; overflow: hidden; opacity: 0; transition: width .28s ease, opacity .2s;
+    background: linear-gradient(180deg,#17130a,#0b0906);
+    border-right: 2px solid var(--gold-dk);
+    box-shadow: 6px 0 24px rgba(0,0,0,.7);
+    display: flex; flex-direction: column; gap: 8px; padding: 14px 10px;
+  }
+  #adminDrawer.open #drawerPanel { width: 230px; opacity: 1; }
+  #drawerPanel .dr-title { color: var(--gold-hi); font-size: .8rem; font-weight: 900; letter-spacing: .08em; margin-bottom: 2px; }
+  #drStatus {
+    font-size: .68rem; font-weight: 800; padding: 7px 9px; border-radius: 8px;
+    border: 1px solid #22314f; background: rgba(15,25,45,.6); color: #7c93b8;
+    word-break: break-all;
+  }
+  #drStatus.ok { color: var(--neon); border-color: rgba(77,255,184,.4); }
+  #drStatus.ng { color: #ff8a9a; border-color: rgba(255,84,112,.4); }
+  #drawerPanel button.dr-btn {
+    border: none; border-radius: 10px; padding: 10px 8px; cursor: pointer;
+    font-size: .74rem; font-weight: 900; letter-spacing: .04em; color: #fff;
+    background: linear-gradient(180deg,#3a3a46,#1c1c24);
+    border: 1px solid #3d3d4d;
+  }
+  #drawerPanel button.dr-btn:active { transform: scale(.96); }
+  #drawerPanel button.dr-btn.primary {
+    background: linear-gradient(180deg,var(--gold-hi),var(--gold)); color:#241a02; border-color:var(--gold-dk);
+  }
+  #drawerPanel button.dr-btn.danger { border-color: rgba(255,84,112,.5); color:#ffb3c0; }
+  #drawerPanel button.dr-btn:disabled { opacity: .45; cursor: default; }
+  #drLog {
+    flex: 1; overflow-y: auto; font-size: .62rem; color: #8a8a96;
+    background: rgba(0,0,0,.4); border-radius: 8px; padding: 8px;
+    white-space: pre-wrap; word-break: break-all; min-height: 60px;
+  }
+  @media (max-width: 430px) {
+    #drawerPanel { width: 0; }
+    #adminDrawer.open #drawerPanel { width: min(230px, 78vw); }
+  }
+
   /* 判定バッジ（液晶内） */
   .verdict {
     text-align:center; margin: 2px 0 8px; padding: 7px 10px; border-radius: 8px;
@@ -957,6 +1006,99 @@
       sfxChime(false);
     } catch (e) { alert('バックアップの作成に失敗しました: ' + e.message); }
   });
+
+  /* ============ 管理者ローカルモード専用：左サイド管理ドロワー ============
+   * isLocalAdmin（127.0.0.1/localhost/file://）の時だけDOMを生成するため、
+   * GitHub Pages 公開版では一切描画・通信されない。 */
+  function buildAdminDrawer() {
+    const wrap = document.createElement('div');
+    wrap.id = 'adminDrawer';
+    wrap.innerHTML =
+      '<button id="drawerTab" title="サーバー管理">⚙️<br>管理</button>' +
+      '<div id="drawerPanel">' +
+        '<div class="dr-title">⚙️ サーバー管理</div>' +
+        '<div id="drStatus">確認中…</div>' +
+        '<button class="dr-btn" id="drRestart">🔄 サーバー再起動</button>' +
+        '<button class="dr-btn danger" id="drStop">■ サーバー停止</button>' +
+        '<button class="dr-btn primary" id="drPush">🚀 GitHub Pagesへ公開更新</button>' +
+        '<button class="dr-btn" id="drOpen">🌐 公開サイトを開く</button>' +
+        '<div id="drLog"></div>' +
+      '</div>';
+    document.body.appendChild(wrap);
+
+    const statusEl = wrap.querySelector('#drStatus');
+    const logEl = wrap.querySelector('#drLog');
+    const btns = wrap.querySelectorAll('.dr-btn');
+    const log = m => { logEl.textContent = (logEl.textContent ? logEl.textContent + '\n' : '') + m; logEl.scrollTop = logEl.scrollHeight; };
+
+    async function api(path, method) {
+      const r = await fetch(path, { method: method || 'GET', cache: 'no-store' });
+      return r.json();
+    }
+    function setStatus(ok, text) {
+      statusEl.className = ok === true ? 'ok' : ok === false ? 'ng' : '';
+      statusEl.textContent = text;
+    }
+    async function refreshStatus() {
+      try {
+        const j = await api('/api/status');
+        setStatus(true, '🟢 稼働中 127.0.0.1:' + j.port);
+      } catch (e) {
+        setStatus(false, '🔴 停止中（.appを開くと再起動）');
+      }
+    }
+    async function waitBack() {
+      for (let i = 0; i < 25; i++) {
+        await new Promise(r => setTimeout(r, 800));
+        try { await api('/api/status'); return true; } catch (e) {}
+      }
+      return false;
+    }
+
+    wrap.querySelector('#drawerTab').addEventListener('click', () => {
+      wrap.classList.toggle('open');
+      if (wrap.classList.contains('open')) refreshStatus();
+    });
+    wrap.querySelector('#drRestart').addEventListener('click', async () => {
+      btns.forEach(b => b.disabled = true);
+      log('サーバー再起動を要求…');
+      try { await api('/api/restart', 'POST'); } catch (e) {}
+      setStatus(null, '🔄 再起動中…');
+      const back = await waitBack();
+      log(back ? '再起動完了 🟢' : '再起動待機タイムアウト（要確認）');
+      setStatus(back, back ? '🟢 稼働中 127.0.0.1:8935' : '🔴 応答なし');
+      btns.forEach(b => b.disabled = false);
+    });
+    wrap.querySelector('#drStop').addEventListener('click', async () => {
+      if (!confirm('ローカルサーバー(8935)を停止しますか？\n再起動は .app を開き直すか管制塔から行えます。')) return;
+      btns.forEach(b => b.disabled = true);
+      log('サーバー停止を要求…');
+      try { await api('/api/stop', 'POST'); } catch (e) {}
+      await new Promise(r => setTimeout(r, 800));
+      setStatus(false, '🔴 停止しました');
+      log('停止しました。.app を開き直すと再起動します。');
+      btns.forEach(b => b.disabled = false);
+    });
+    wrap.querySelector('#drPush').addEventListener('click', async () => {
+      btns.forEach(b => b.disabled = true);
+      log('git add / commit / push を実行中…（数十秒かかる場合があります）');
+      try {
+        const j = await api('/api/push', 'POST');
+        (j.steps || []).forEach(s => log(s.name + ' → code ' + s.code + (s.out ? '\n' + s.out.trim().slice(-300) : '')));
+        if (j.error) log('エラー: ' + j.error);
+        log(j.ok ? '✅ 公開更新が完了しました → ' + 'https://mopfyyi99201-ui.github.io/newking-hanahana-v30/' : '⚠️ 一部失敗（ログ参照）');
+      } catch (e) {
+        log('通信エラー: ' + e.message);
+      }
+      btns.forEach(b => b.disabled = false);
+      refreshStatus();
+    });
+    wrap.querySelector('#drOpen').addEventListener('click', () => {
+      window.open('https://mopfyyi99201-ui.github.io/newking-hanahana-v30/', '_blank', 'noopener');
+    });
+    refreshStatus();
+  }
+  if (isLocalAdmin) buildAdminDrawer();
 
   function colorLabel(c) {
     return { white:'白', blue:'青', yellow:'黄', green:'緑', purple:'紫', red:'赤' }[c] || c;
