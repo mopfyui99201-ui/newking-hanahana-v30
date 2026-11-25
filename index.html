@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ニューキングハナハナV 設定判別</title>
+<style>
+  :root {
+    --bg: #0b0e14;
+    --panel: #141a26;
+    --panel2: #1b2334;
+    --line: #26314a;
+    --text: #e8edf7;
+    --sub: #8b96b3;
+    --accent: #35e0c8;
+    --accent2: #7c6cff;
+    --danger: #ff5470;
+    --neon: #4dffb8;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { font-size: 16px; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    padding: 12px 12px calc(24px + env(safe-area-inset-bottom));
+    max-width: 480px;
+    margin: 0 auto;
+    user-select: none;
+  }
+  h1 {
+    font-size: 1.15rem;
+    margin: 4px 0 12px;
+    text-align: center;
+    letter-spacing: .08em;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .card h2 {
+    font-size: .8rem;
+    color: var(--sub);
+    margin: 0 0 10px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  .row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .row:last-child { margin-bottom: 0; }
+  label.field-label { flex: 0 0 42%; font-size: .85rem; color: var(--sub); }
+  input[type=number], input[type=text] {
+    flex: 1;
+    min-width: 0;
+    background: var(--panel2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 1.1rem;
+    font-weight: 700;
+    padding: 10px 12px;
+    text-align: right;
+    outline: none;
+  }
+  input:focus { border-color: var(--accent); }
+  .auto-note { font-size: .7rem; color: var(--accent); }
+
+  /* +1/-1 ステッパー */
+  .stepper { display: flex; gap: 8px; align-items: stretch; margin-bottom: 10px; }
+  .stepper .val-wrap { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .stepper .name { font-size: .78rem; color: var(--sub); margin-bottom: 2px; }
+  .stepper input { text-align: center; }
+  .stepper button {
+    width: 52px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #04121a;
+    background: var(--accent);
+    cursor: pointer;
+  }
+  .stepper button.minus { background: #5a6880; color: #dfe6f5; }
+  .stepper button:active { transform: scale(.93); filter: brightness(1.15); }
+
+  /* 実戦確率一覧 */
+  .prob-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .prob-item {
+    background: var(--panel2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 8px;
+    text-align: center;
+  }
+  .prob-item .p-name { font-size: .72rem; color: var(--sub); letter-spacing: .08em; }
+  .prob-item .p-val { font-size: 1.05rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .prob-item .p-obs { font-size: .68rem; color: var(--sub); font-variant-numeric: tabular-nums; }
+
+  /* ランプカウントボタン群 */
+  .lamp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .lamp-btn {
+    position: relative;
+    border: 1px solid var(--line);
+    background: var(--panel2);
+    border-radius: 10px;
+    padding: 12px 4px 8px;
+    color: var(--text);
+    font-size: .78rem;
+    cursor: pointer;
+    overflow: hidden;
+  }
+  .lamp-btn:active { transform: scale(.94); }
+  .lamp-btn .dot {
+    display: block;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    margin: 0 auto 5px;
+    box-shadow: 0 0 8px currentColor;
+  }
+  .lamp-btn .cnt {
+    position: absolute; top: 4px; right: 6px;
+    font-size: .68rem; font-weight: 700; color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .lamp-btn.zero .cnt { color: var(--sub); }
+  .lamp-btn.on { border-color: var(--accent); }
+  .lamp-wide { grid-column: 1 / -1; }
+
+  /* スイカカウンタ */
+  .counter-pair { display: flex; gap: 10px; }
+  .counter-box {
+    flex: 1; background: var(--panel2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px; text-align: center;
+  }
+  .counter-box .name { font-size: .75rem; color: var(--sub); margin-bottom: 6px; }
+  .counter-box .num { font-size: 1.6rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .counter-box .mini { display: flex; gap: 6px; margin-top: 8px; }
+  .counter-box .mini button {
+    flex: 1; padding: 10px 0; font-size: 1.05rem; font-weight: 800;
+    border: none; border-radius: 8px; cursor: pointer;
+  }
+  .counter-box .mini button.p { background: var(--accent); color: #04121a; }
+  .counter-box .mini button.m { background: #5a6880; color: #dfe6f5; }
+  .counter-box .mini button:active { transform: scale(.93); }
+
+  /* 設定除外 & 期待度バー */
+  .set-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .set-row:last-child { margin-bottom: 0; }
+  .set-row input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); }
+  .set-row .sname { flex: 0 0 64px; font-size: .85rem; font-weight: 700; }
+  .set-row.excluded .sname { color: var(--sub); text-decoration: line-through; }
+  .bar-wrap { flex: 1; height: 22px; background: var(--panel2); border-radius: 6px; overflow: hidden; position: relative; }
+  .bar-fill {
+    height: 100%; width: 0%;
+    border-radius: 6px;
+    transition: width .45s cubic-bezier(.22,1,.36,1), background .3s;
+    position: relative;
+  }
+  .bar-fill::after {
+    content: attr(data-pct);
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    font-size: .68rem; font-weight: 700; color: #04121a; mix-blend-mode: normal;
+    text-shadow: 0 0 4px #fff;
+  }
+  .bar-fill.dim { filter: grayscale(.7) brightness(.6); }
+  .set-pct { flex: 0 0 48px; text-align: right; font-size: .8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .btn-reset {
+    width: 100%; padding: 14px; border: none; border-radius: 12px;
+    background: linear-gradient(90deg, #ff5470, #ff8a5c);
+    color: #fff; font-size: .95rem; font-weight: 800; letter-spacing: .1em;
+    cursor: pointer; margin-top: 4px;
+  }
+  .btn-reset:active { transform: scale(.97); }
+  .saved-note { text-align: center; font-size: .68rem; color: var(--sub); margin-top: 10px; }
+</style>
+</head>
+<body>
+<h1>ニューキングハナハナV 設定判別</h1>
+
+<!-- 基本データ -->
+<div class="card">
+  <h2>基本データ</h2>
+  <div class="row">
+    <label class="field-label">打ち始めG</label>
+    <input type="number" id="startG" inputmode="numeric" min="0" placeholder="0">
+  </div>
+  <div class="row">
+    <label class="field-label">現在G <span class="auto-note" id="totalGNote"></span></label>
+    <input type="number" id="currentG" inputmode="numeric" min="0" placeholder="0">
+  </div>
+  <div class="row">
+    <label class="field-label">総ゲーム数 <span class="auto-note">(自動/直接可)</span></label>
+    <input type="number" id="totalG" inputmode="numeric" min="0" placeholder="自動計算">
+  </div>
+</div>
+
+<!-- 回数カウント -->
+<div class="card">
+  <h2>回数カウント</h2>
+  <div class="stepper" id="counterBig"></div>
+  <div class="stepper" id="counterReg"></div>
+  <div class="stepper" id="counterBell"></div>
+</div>
+
+<!-- 現在の実戦確率 -->
+<div class="card">
+  <h2>現在の実戦確率</h2>
+  <div class="prob-grid" id="probGrid"></div>
+</div>
+
+<!-- 示唆カウント -->
+<div class="card">
+  <h2>ボーナス終了時ハイビスカスランプ</h2>
+  <div class="lamp-grid" id="hibiscusGrid"></div>
+</div>
+<div class="card">
+  <h2>BIG後半 ビタ押しサイドランプ</h2>
+  <div class="lamp-grid" id="sideGrid"></div>
+</div>
+<div class="card">
+  <h2>スイカ示唆</h2>
+  <div class="counter-pair">
+    <div class="counter-box">
+      <div class="name">REG中 スイカ揃い</div>
+      <div class="num" id="regSuikaNum">0</div>
+      <div class="mini">
+        <button class="p" data-suika="reg" data-d="1">+1</button>
+        <button class="m" data-suika="reg" data-d="-1">-1</button>
+      </div>
+    </div>
+    <div class="counter-box">
+      <div class="name">BIG前半 スイカ出現</div>
+      <div class="num" id="bigSuikaNum">0</div>
+      <div class="mini">
+        <button class="p" data-suika="big" data-d="1">+1</button>
+        <button class="m" data-suika="big" data-d="-1">-1</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 設定除外＆期待度 -->
+<div class="card">
+  <h2>設定除外 ＆ 期待度</h2>
+  <div id="settingRows"></div>
+</div>
+
+<button class="btn-reset" id="resetBtn">リセット</button>
+<div class="saved-note" id="savedNote">入力は自動保存されます</div>
+
+<script src="calc.js"></script>
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const LS_KEY = 'hanahana-v30-state-v1';
+
+  // ---------- 状態 ----------
+  const state = {
+    startG: '', currentG: '', totalG: '',
+    big: 0, reg: 0, bell: '',
+    lamps: {
+      hibiscus: { white:0, blue:0, yellow:0, green:0, purple:0, rainbow:0 },
+      side:     { blue:0, yellow:0, green:0, red:0, rainbow:0 },
+      regSuika: 0, bigSuika: 0
+    },
+    excluded: {}   // settingKey -> true
+  };
+
+  const COUNTERS = [
+    { key:'big',  label:'BIG回数',   el:'counterBig'  },
+    { key:'reg',  label:'REG回数',   el:'counterReg'  },
+    { key:'bell', label:'ベル回数',  el:'counterBell' }
+  ];
+  const HIBISCUS_COLORS = ['white','blue','yellow','green','purple','rainbow'];
+  const SIDE_COLORS = ['blue','yellow','green','red','rainbow'];
+
+  const NEON = ['#4dffb8','#35e0c8','#7c6cff','#ff8a5c','#ff5470','#ffd166','#f368e0','#7cc7ff'];
+
+  // ---------- DOM生成 ----------
+  function buildCounters() {
+    for (const c of COUNTERS) {
+      const wrap = $(c.el);
+      wrap.innerHTML =
+        '<div class="val-wrap"><div class="name">' + c.label + '</div>' +
+        '<input type="number" id="num_' + c.key + '" inputmode="numeric" min="0" value="' + (state[c.key] === '' ? '' : state[c.key]) + '"></div>' +
+        '<button class="minus" data-key="' + c.key + '" data-d="-1">−</button>' +
+        '<button data-key="' + c.key + '" data-d="1">＋</button>';
+      wrap.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.dataset.key;
+          const cur = parseInt(state[key], 10) || 0;
+          state[key] = Math.max(0, cur + parseInt(btn.dataset.d, 10));
+          $('num_' + key).value = state[key];
+          update();
+        });
+      });
+      wrap.querySelector('input').addEventListener('input', e => {
+        const v = e.target.value;
+        state[c.key] = v === '' ? '' : Math.max(0, parseInt(v, 10) || 0);
+        update();
+      });
+    }
+  }
+
+  function buildLamps(gridId, colors, lampKey) {
+    const grid = $(gridId);
+    colors.forEach((color, i) => {
+      const meta = color === 'rainbow'
+        ? { label:'虹', css:'conic-gradient(#ff5470,#ffd166,#4dffb8,#35e0c8,#7c6cff,#f368e0,#ff5470)' }
+        : { label: colorLabel(color), css: colorHex(color) };
+      const btn = document.createElement('button');
+      btn.className = 'lamp-btn' + (state.lamps[lampKey][color] === 0 ? ' zero' : '');
+      btn.dataset.color = color;
+      btn.dataset.lamp = lampKey;
+      btn.innerHTML =
+        '<span class="cnt">' + state.lamps[lampKey][color] + '</span>' +
+        '<span class="dot" style="background:' + meta.css + ';color:' + meta.css + '"></span>' +
+        meta.label;
+      btn.addEventListener('click', () => {
+        state.lamps[lampKey][color] = Math.max(0, (state.lamps[lampKey][color] || 0) + 1);
+        btn.querySelector('.cnt').textContent = state.lamps[lampKey][color];
+        btn.classList.toggle('zero', state.lamps[lampKey][color] === 0);
+        update();
+      });
+      // 長押しで -1
+      let timer = null;
+      btn.addEventListener('touchstart', () => {
+        timer = setTimeout(() => {
+          state.lamps[lampKey][color] = Math.max(0, (state.lamps[lampKey][color] || 0) - 1);
+          btn.querySelector('.cnt').textContent = state.lamps[lampKey][color];
+          btn.classList.toggle('zero', state.lamps[lampKey][color] === 0);
+          update();
+        }, 600);
+      });
+      btn.addEventListener('touchend', () => clearTimeout(timer));
+      btn.addEventListener('touchcancel', () => clearTimeout(timer));
+      btn.addEventListener('mousedown', () => {
+        timer = setTimeout(() => {
+          state.lamps[lampKey][color] = Math.max(0, (state.lamps[lampKey][color] || 0) - 1);
+          btn.querySelector('.cnt').textContent = state.lamps[lampKey][color];
+          btn.classList.toggle('zero', state.lamps[lampKey][color] === 0);
+          update();
+        }, 600);
+      });
+      btn.addEventListener('mouseup', () => clearTimeout(timer));
+      btn.addEventListener('mouseleave', () => clearTimeout(timer));
+      grid.appendChild(btn);
+    });
+  }
+
+  function colorLabel(c) {
+    return { white:'白', blue:'青', yellow:'黄', green:'緑', purple:'紫', red:'赤' }[c] || c;
+  }
+  function colorHex(c) {
+    return {
+      white:'#e8edf7', blue:'#35e0c8', yellow:'#ffd166', green:'#4dffb8',
+      purple:'#b57bff', red:'#ff5470', rainbow:'#888'
+    }[c] || '#888';
+  }
+
+  function buildSettingRows() {
+    const wrap = $('settingRows');
+    HanahanaCalc.SETTING_ORDER.forEach((key, i) => {
+      const s = HanahanaCalc.HANAHANA_SETTINGS[key];
+      const row = document.createElement('div');
+      row.className = 'set-row' + (state.excluded[key] ? ' excluded' : '');
+      row.innerHTML =
+        '<input type="checkbox" id="ex_' + key + '"' + (state.excluded[key] ? ' checked' : '') + '>' +
+        '<label class="sname" for="ex_' + key + '">' + s.name + '</label>' +
+        '<div class="bar-wrap"><div class="bar-fill" id="bar_' + key + '" style="background:' + NEON[i % NEON.length] + '"></div></div>' +
+        '<div class="set-pct" id="pct_' + key + '">0.0%</div>';
+      $('ex_' + key).addEventListener('change', e => {
+        state.excluded[key] = e.target.checked;
+        row.classList.toggle('excluded', e.target.checked);
+        update();
+      });
+      wrap.appendChild(row);
+    });
+  }
+
+  // ---------- 入力イベント ----------
+  function bindBasicInputs() {
+    const bind = (id, key) => {
+      $(id).addEventListener('input', e => {
+        state[key] = e.target.value;
+        update();
+      });
+    };
+    bind('startG', 'startG');
+    bind('currentG', 'currentG');
+    bind('totalG', 'totalG');
+  }
+
+  // ---------- 計算・描画 ----------
+  function getTotalGames() {
+    // totalG 直接入力があれば優先、なければ currentG - startG
+    if (state.totalG !== '' && !isNaN(parseInt(state.totalG, 10))) {
+      return parseInt(state.totalG, 10);
+    }
+    const s = parseInt(state.startG, 10) || 0;
+    const c = parseInt(state.currentG, 10) || 0;
+    return Math.max(0, c - s);
+  }
+
+  function observedFreq(total, count) {
+    if (!total || total <= 0) return null;
+    return total / Math.max(0, count);
+  }
+
+  function update() {
+    const total = getTotalGames();
+    $('totalGNote').textContent = (state.totalG === '' && total > 0) ? '（総G=' + total + '）' : '';
+
+    // 現在の実戦確率
+    const probs = [
+      ['BIG', 'big', observedFreq(total, state.big|0)],
+      ['REG', 'reg', observedFreq(total, state.reg|0)],
+      ['合算', 'comb', observedFreq(total, (state.big|0) + (state.reg|0))],
+      ['ベル', 'bell', state.bell === '' ? null : observedFreq(total, state.bell|0)]
+    ];
+    $('probGrid').innerHTML = probs.map(([name, , f]) =>
+      '<div class="prob-item"><div class="p-name">' + name + '</div>' +
+      '<div class="p-val">' + (f ? '1/' + f.toFixed(1) : '—') + '</div>' +
+      '<div class="p-obs">' + (f ? '' : 'データ不足') + '</div></div>'
+    ).join('');
+
+    // スイカ数値表示
+    $('regSuikaNum').textContent = state.lamps.regSuika;
+    $('bigSuikaNum').textContent = state.lamps.bigSuika;
+
+    // 設定判別（ソフトマックス）
+    const excluded = HanahanaCalc.SETTING_ORDER.filter(k => state.excluded[k]);
+    const calcState = {
+      totalG: total,
+      big: state.big === '' ? 0 : state.big,
+      reg: state.reg === '' ? 0 : state.reg,
+      bell: state.bell === '' ? null : state.bell,
+      lamps: state.lamps
+    };
+    const { probabilities } = HanahanaCalc.calculateHanahanaProbabilities(calcState, { excluded });
+
+    HanahanaCalc.SETTING_ORDER.forEach((key, i) => {
+      const p = probabilities[key] || 0;
+      const pct = (p * 100).toFixed(1);
+      const bar = $('bar_' + key);
+      const pctEl = $('pct_' + key);
+      if (bar) {
+        bar.style.width = pct + '%';
+        bar.dataset.pct = pct + '%';
+        bar.classList.toggle('dim', state.excluded[key]);
+        bar.style.background = NEON[i % NEON.length];
+      }
+      if (pctEl) {
+        pctEl.textContent = pct + '%';
+        pctEl.style.color = state.excluded[key] ? 'var(--sub)' : 'var(--text)';
+      }
+    });
+    save();
+  }
+
+  // ---------- 永続化 ----------
+  function save() {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(state));
+      $('savedNote').textContent = '自動保存済み ' + new Date().toLocaleTimeString('ja-JP', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    } catch (e) { /* ignore */ }
+  }
+
+  function restore() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (d.startG !== undefined) state.startG = d.startG;
+      if (d.currentG !== undefined) state.currentG = d.currentG;
+      if (d.totalG !== undefined) state.totalG = d.totalG;
+      if (d.big !== undefined) state.big = d.big;
+      if (d.reg !== undefined) state.reg = d.reg;
+      if (d.bell !== undefined) state.bell = d.bell;
+      if (d.lamps) {
+        Object.assign(state.lamps.hibiscus, d.lamps.hibiscus || {});
+        Object.assign(state.lamps.side, d.lamps.side || {});
+        state.lamps.regSuika = d.lamps.regSuika || 0;
+        state.lamps.bigSuika = d.lamps.bigSuika || 0;
+      }
+      if (d.excluded) state.excluded = d.excluded;
+    } catch (e) { /* ignore */ }
+  }
+
+  // ---------- リセット ----------
+  $('resetBtn').addEventListener('click', () => {
+    if (!confirm('全データをリセットしますか？\n（localStorageも消去されます）')) return;
+    localStorage.removeItem(LS_KEY);
+    location.reload();
+  });
+
+  // ---------- スイカボタン ----------
+  document.querySelectorAll('[data-suika]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const which = btn.dataset.suika === 'reg' ? 'regSuika' : 'bigSuika';
+      const d = parseInt(btn.dataset.d, 10);
+      state.lamps[which] = Math.max(0, (state.lamps[which] || 0) + d);
+      update();
+    });
+  });
+
+  // ---------- 初期化 ----------
+  buildCounters();
+  buildLamps('hibiscusGrid', HIBISCUS_COLORS, 'hibiscus');
+  buildLamps('sideGrid', SIDE_COLORS, 'side');
+  buildSettingRows();
+  bindBasicInputs();
+  restore();
+  // 復元後に入力欄へ反映
+  $('startG').value = state.startG;
+  $('currentG').value = state.currentG;
+  $('totalG').value = state.totalG;
+  $('num_big').value = state.big === '' ? '' : state.big;
+  $('num_reg').value = state.reg === '' ? '' : state.reg;
+  $('num_bell').value = state.bell === '' ? '' : state.bell;
+  update();
+})();
+</script>
+</body>
+</html>
