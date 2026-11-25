@@ -560,6 +560,59 @@
   .sname { display:flex; flex-direction:column; line-height:1.15; }
   .sname small { font-size:.52rem; color:#5f7ba6; font-weight:400; }
   .set-row .sname { flex:0 0 50px; font-size:.72rem; font-weight:700; color:var(--txt); }
+
+  /* ===== 使い方マニュアル / AI相談 ===== */
+  .guide-actions { display:flex; gap:8px; margin: 4px 0 10px; }
+  .guide-actions .g-btn {
+    flex:1; border:none; border-radius:12px; padding:11px 6px; cursor:pointer;
+    font-size:.74rem; font-weight:900; letter-spacing:.03em; color:#fff;
+    background:linear-gradient(180deg,#3a3a46,#1c1c24); border:1px solid #3d3d4d;
+  }
+  .guide-actions .g-btn:active { transform:scale(.96); }
+  .g-btn.manual { border-color: rgba(255,209,102,.45); }
+  .g-btn.ai { border-color: rgba(124,108,255,#7c6cff,.5); background:linear-gradient(180deg,#3a2f6a,#221a48); }
+
+  .guide-sec { margin-bottom:14px; }
+  .guide-sec h4 {
+    font-size:.78rem; font-weight:900; color:var(--gold-hi); letter-spacing:.06em;
+    border-left:3px solid var(--gold); padding-left:8px; margin:0 0 6px;
+  }
+  .guide-sec p, .guide-sec li { font-size:.7rem; line-height:1.75; color:#c9cede; }
+  .guide-sec ul { margin:4px 0 0; padding-left:18px; }
+  .guide-sec .hi { color:var(--neon); font-weight:800; }
+  .guide-sec .warn { color:#ffb3c0; font-weight:800; }
+
+  .ai-prompt-box {
+    width:100%; min-height:150px; max-height:220px; overflow-y:auto;
+    background:#0a0b10; border:1px solid #2c2c38; border-radius:10px;
+    padding:10px; font-size:.64rem; line-height:1.7; color:#b8c4d8;
+    font-family:ui-monospace,Menlo,monospace; white-space:pre-wrap; word-break:break-all;
+  }
+  .ai-btn-row { display:flex; flex-direction:column; gap:7px; margin:10px 0; }
+  .ai-btn-row .ai-link {
+    display:block; text-align:center; text-decoration:none;
+    border-radius:11px; padding:11px 8px; font-size:.76rem; font-weight:900; color:#fff;
+  }
+  .ai-btn-row .ai-link.chatgpt { background:linear-gradient(180deg,#10a37f,#0d7a5f); }
+  .ai-btn-row .ai-link.gemini  { background:linear-gradient(180deg,#4285f4,#2a63c9); }
+  .ai-btn-row .ai-link.copy    { background:linear-gradient(180deg,#5a4a8a,#3a2a5c); }
+  .ai-btn-row .ai-link:active { transform:scale(.97); }
+  .ai-note { font-size:.6rem; color:var(--sub); text-align:center; margin-top:4px; line-height:1.6; }
+
+  .ai-guide { border:1px dashed #3d3d4d; border-radius:10px; padding:8px 10px; margin:8px 0; }
+  .ai-guide summary { font-size:.7rem; font-weight:800; color:var(--gold-hi); cursor:pointer; }
+  .ai-guide ol { margin:6px 0 2px; padding-left:18px; }
+  .ai-guide li { font-size:.66rem; color:#c9cede; line-height:1.7; }
+
+  .advisor-box {
+    background:linear-gradient(180deg,#141824,#0d1018); border:1px solid #2a3a5c;
+    border-radius:12px; padding:11px; margin-top:12px;
+  }
+  .advisor-box .ad-title { font-size:.72rem; font-weight:900; color:#8fb0d8; letter-spacing:.08em; margin-bottom:6px; }
+  .advisor-box .ad-item { font-size:.68rem; line-height:1.7; color:#d8e2f2; padding:4px 0; border-bottom:1px dashed #232c40; }
+  .advisor-box .ad-item:last-child { border-bottom:none; }
+  .advisor-box .ad-item b { color:var(--neon); }
+  .advisor-box .ad-item .neg { color:#ff8a95; }
 </style>
 </head>
 <body>
@@ -630,6 +683,11 @@
   <!-- ===== 下部操作パネル ===== -->
   <div class="bottom-panel">
     <div class="panel-title">— CONTROL PANEL —</div>
+
+    <div class="guide-actions">
+      <button class="g-btn manual" id="manualBtn">📖 使い方マニュアル</button>
+      <button class="g-btn ai" id="aiBtn">🤖 AIに今の台を相談</button>
+    </div>
 
     <div class="lamp-sec-title">営業モード（事前確率）</div>
     <div class="tab-bar" id="bizBar">
@@ -780,6 +838,72 @@
     <div class="modal-title">保存履歴</div>
     <div id="histList"></div>
     <button class="btn-apply" id="histClose">閉じる</button>
+  </div>
+</div>
+
+<!-- 使い方マニュアルモーダル -->
+<div class="modal-overlay" id="manualModal" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-title">📖 実戦マニュアル</div>
+    <div class="guide-sec">
+      <h4>① 基本データの入力とベル逆算</h4>
+      <ul>
+        <li><b>総ゲーム数</b>：打ち始めGと現在Gを入れれば自動計算。総G欄に直接入力も可。</li>
+        <li><b>BIG / REG / ベル</b>：終了ごとに <b>＋</b> ボタンでカウント。</li>
+        <li><b>差枚数モード「投資・持ちメダル」</b>：投資（千円）に <b>+1</b> ボタン、貸出枚数を <b>20S/10S/5スロ</b> から選択（カスタム自由入力も可）→ <span class="hi">投資千円 × 貸出枚数</span> が自動計算され、持ちメダルとの差が差枚数になります。</li>
+        <li><b>ベル逆算</b>：差枚数から BIG=312枚・REG=130枚・リプレイ・小役払い出しを差し引き、<span class="hi">補正済みベル確率 1/〇.〇〇</span> を自動推定。「ベル回数に反映」で入力欄へ反映できます。</li>
+      </ul>
+    </div>
+    <div class="guide-sec">
+      <h4>② ニューキングハナハナV-30 判別ポイント</h4>
+      <ul>
+        <li><b>REG確率・REG中スイカ</b>：設定差が最も出やすい指標。REG中スイカは REG回数×10G が母数。</li>
+        <li><span class="warn">REG終了時ハイビスカスが白以外（青以上）</span>：<span class="hi">設定1は完全除外（設定2以上濃厚）</span>。<b>虹</b>なら設定1・2・3も自動除外され設定4・Vのみで再計算。</li>
+        <li><b>サイドランプ</b>：設定4は暖色（黄・赤）寄り、設定Vは寒色（青・緑）寄りの実戦傾向。<b>虹</b>は高設定濃厚。</li>
+        <li><b>特殊点滅・レトロサウンド</b>：高設定示唆としてカウント。</li>
+        <li>液晶上部の <b>7つのトップランプ</b> はカウント数と連動して発光。ハイビスカスアイコンをタップすると全灯テストができます。</li>
+      </ul>
+    </div>
+    <div class="guide-sec">
+      <h4>③ 営業モードと設定除外</h4>
+      <ul>
+        <li><b>通常営業</b>：低設定ベースの事前確率。<b>特日・イベ日</b>：高設定期待で事前確率を上方修正。<b>均等フラット</b>：完全フラット。</li>
+        <li><b>判別信頼度</b>：序盤（〜500G）は確率が大きく振れません（事前分布でスムージング）。2000G超〜4000Gで精度が上がります。</li>
+        <li><b>設定除外チェック</b>：液晶の設定バーまたは下部チップをタップでON/OFF。「自動除外」チップでランプ由来の自動除外を切替可能。</li>
+        <li><b>履歴保存</b>：台番号・メモを入れて「履歴に保存」→ リセット前に記録を残せます。</li>
+      </ul>
+    </div>
+    <button class="btn-apply" id="manualClose">閉じる</button>
+  </div>
+</div>
+
+<!-- AI相談モーダル -->
+<div class="modal-overlay" id="aiModal" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-title">🤖 AIに今の台を相談する</div>
+    <div class="guide-sec">
+      <h4>現在の実戦データ（自動生成プロンプト）</h4>
+      <div class="ai-prompt-box" id="aiPrompt"></div>
+      <div class="ai-btn-row">
+        <a class="ai-link chatgpt" id="aiChatgpt" href="https://chatgpt.com/" target="_blank" rel="noopener">💬 ChatGPT で相談する</a>
+        <a class="ai-link gemini" id="aiGemini" href="https://gemini.google.com/" target="_blank" rel="noopener">✨ Gemini で相談する</a>
+        <button class="ai-link copy" id="aiCopy" type="button">📋 プロンプトをコピーだけする</button>
+      </div>
+      <div class="ai-note">※ボタンを押すとプロンプトが自動コピーされます。AIアプリ/サイトを開いて貼り付けて相談してください。</div>
+    </div>
+    <details class="ai-guide">
+      <summary>ChatGPT / Gemini をお持ちでない方はこちら（無料・3ステップ）</summary>
+      <ol>
+        <li>App Store（iPhone）または Google Play（Android）で <b>「ChatGPT」</b> または <b>「Gemini」</b> を検索して無料インストール。</li>
+        <li>アプリを開き、表示された質問文（プロンプト）をそのまま貼り付けて送信。</li>
+        <li>AIが現在の台の押し引き・設定見立てを日本語でアドバイスします。</li>
+      </ol>
+    </details>
+    <div class="advisor-box">
+      <div class="ad-title">🧠 内蔵クイックAIアドバイザー（外部AI不要・即時診断）</div>
+      <div id="advisorList"></div>
+    </div>
+    <button class="btn-apply" id="aiClose">閉じる</button>
   </div>
 </div>
 
@@ -1785,6 +1909,167 @@
       if (d.excluded) state.excluded = d.excluded;
     } catch (e) {}
   }
+
+  // ---------- 📖 使い方マニュアル / 🤖 AI相談 ----------
+  function closeModal(id) { $(id).style.display = 'none'; }
+  $('manualBtn').addEventListener('click', () => { $('manualModal').style.display = 'flex'; sfxTap(true); });
+  $('manualClose').addEventListener('click', () => closeModal('manualModal'));
+  $('manualModal').addEventListener('click', e => { if (e.target === $('manualModal')) closeModal('manualModal'); });
+  $('aiBtn').addEventListener('click', () => { openAiPanel(); sfxTap(true); });
+  $('aiClose').addEventListener('click', () => closeModal('aiModal'));
+  $('aiModal').addEventListener('click', e => { if (e.target === $('aiModal')) closeModal('aiModal'); });
+
+  // 現在の全データをスナップショット化（プロンプト・内蔵アドバイザー共用）
+  function aiSnapshot() {
+    const d = activeData();
+    const excluded = HanahanaCalc.SETTING_ORDER.filter(k => state.excluded[k]);
+    const r = HanahanaCalc.calculateHanahanaProbabilities(
+      { totalG: d.totalG, big: d.big, reg: d.reg, bell: d.bell, lamps: state.lamps },
+      { excluded, bizMode: state.bizMode, autoEx: state.autoExEnabled });
+    const probs = r.probabilities || {};
+    const probTxt = HanahanaCalc.SETTING_ORDER.map(k =>
+      HanahanaCalc.HANAHANA_SETTINGS[k].name + ' ' + ((probs[k] || 0) * 100).toFixed(1) + '%'
+    ).join(' / ');
+    const autoEx = (r.autoExcluded || []).map(k => HanahanaCalc.HANAHANA_SETTINGS[k].name).join(',') || 'なし';
+    const diff = effectiveDiff();
+    const hasDiff = (state.diffMode === 'invest' && (state.investYen !== '' || state.medals !== ''))
+                 || (state.diffMode === 'direct' && state.diffCount !== '');
+    let payoutTxt = '未入力';
+    if (d.totalG > 0 && hasDiff) {
+      const investN = investMedalsCount();
+      const totalBet = (state.diffMode === 'direct' && numOf(state.inputMedals) > 0)
+        ? numOf(state.inputMedals) : d.totalG * 3;
+      const rate = (totalBet + diff) / totalBet * 100;
+      payoutTxt = rate.toFixed(1) + '%（投入' + totalBet.toLocaleString() + '枚→獲得' + (totalBet + diff).toLocaleString() + '枚）';
+    }
+    const lampTxt = [];
+    ['white','blue','yellow','green','purple','rainbow'].forEach(c => {
+      const n = (state.lamps.hibiscusBig[c] || 0) + (state.lamps.hibiscusReg[c] || 0);
+      if (n) lampTxt.push('ハイビスカス' + ({white:'白',blue:'青',yellow:'黄',green:'緑',purple:'紫',rainbow:'虹'}[c]) + '×' + n);
+    });
+    ['blue','yellow','green','red','rainbow'].forEach(c => {
+      const n = (state.lamps.side[c] || 0);
+      if (n) lampTxt.push('サイド' + ({blue:'青',yellow:'黄',green:'緑',red:'赤',rainbow:'虹'}[c]) + '×' + n);
+    });
+    if (state.lamps.regSuika) lampTxt.push('REG中スイカ×' + state.lamps.regSuika);
+    if (state.lamps.bigSuika) lampTxt.push('BIG前半スイカ×' + state.lamps.bigSuika);
+    if (state.lamps.retroFlash) lampTxt.push('特殊点滅×' + state.lamps.retroFlash);
+    if (state.lamps.retroSound) lampTxt.push('レトロサウンド×' + state.lamps.retroSound);
+    return {
+      d, probs, probTxt, autoEx, diff, hasDiff, payoutTxt,
+      lamps: lampTxt.join('、') || 'なし',
+      confidence: r.confidence || 0,
+      bizName: { normal:'通常営業', event:'特日・イベ日', flat:'均等フラット' }[state.bizMode] || state.bizMode
+    };
+  }
+
+  function buildAiPrompt() {
+    const s = aiSnapshot();
+    const bellTxt = s.d.bell == null ? '未入力' : s.d.bell + '回';
+    const diffTxt = s.hasDiff ? (s.diff >= 0 ? '+' : '') + s.diff.toLocaleString() + '枚' : '未入力';
+    return [
+      '【パチスロ ニューキングハナハナV-30 設定判別の相談】',
+      '以下は私が現在の実戦データを入力した『設定判別ツール』の解析結果です。',
+      'プロの目線で、この台の押し引き（続行/ヤメ）・設定見立て・注目すべき次の小役やランプを日本語でアドバイスしてください。',
+      '',
+      '■ 基本データ',
+      '・総ゲーム数: ' + s.d.totalG.toLocaleString() + 'G',
+      '・BIG: ' + s.d.big + '回 / REG: ' + s.d.reg + '回 / ベル: ' + bellTxt,
+      '・実戦確率: BIG 1/' + (s.d.totalG > 0 ? (s.d.totalG / Math.max(1, s.d.big)).toFixed(1) : '—') +
+        ' / REG 1/' + (s.d.totalG > 0 ? (s.d.totalG / Math.max(1, s.d.reg)).toFixed(1) : '—') +
+        ' / 合算 1/' + (s.d.totalG > 0 ? (s.d.totalG / Math.max(1, s.d.big + s.d.reg)).toFixed(1) : '—'),
+      '',
+      '■ 設定別期待度（ベイズ推定・営業モード: ' + s.bizName + '）',
+      s.probTxt,
+      '・判別信頼度: ' + Math.round(s.confidence * 100) + '%',
+      '・自動除外中の設定: ' + s.autoEx,
+      '',
+      '■ 差枚・機械割',
+      '・差枚数: ' + diffTxt + ' / 実戦機械割: ' + s.payoutTxt,
+      '',
+      '■ ランプ・示唆履歴',
+      s.lamps,
+      '',
+      '質問：この台は続行すべきですか？それともヤメ時ですか？理由と、次に注目すべき演出・小役を教えてください。'
+    ].join('\n');
+  }
+
+  // 内蔵クイックAIアドバイザー（外部AI不要の即時ヒューリスティック診断）
+  function quickAdvice() {
+    const s = aiSnapshot();
+    const items = [];
+    const pV = s.probs.settingV || 0, p4 = s.probs.setting4 || 0;
+    const pHi = pV + p4;
+    const p12 = (s.probs.setting1 || 0) + (s.probs.setting2 || 0);
+    if (s.d.totalG <= 0 && s.d.big + s.d.reg === 0) {
+      items.push('<div class="ad-item">まずは <b>総G数・BIG/REGカウント</b> を入力してください。データがないと診断できません。</div>');
+      return items;
+    }
+    if (pV >= 0.35) {
+      items.push('<div class="ad-item">🔥 <b>設定V濃厚（' + (pV * 100).toFixed(1) + '%）</b>：機械割112%理論の高設定。<b>続行・全ツッパ推奨</b>。</div>');
+    } else if (pHi >= 0.5) {
+      items.push('<div class="ad-item">✨ <b>高設定期待（設定4・V合算 ' + (pHi * 100).toFixed(1) + '%）</b>：続行推奨。設定4以上が半分超。</div>');
+    } else if (p12 >= 0.6) {
+      items.push('<div class="ad-item"><span class="neg">⚠️ 低設定濃厚（設定1・2合算 ' + (p12 * 100).toFixed(1) + '%）</span>：ヤメ時注意。差枚がプラス圏なら確保を検討。</div>');
+    } else {
+      items.push('<div class="ad-item">▶ <b>判定保留</b>（設定4・V合算 ' + (pHi * 100).toFixed(1) + '%）：もう少しデータ蓄積。信頼度 ' + Math.round(s.confidence * 100) + '%。</div>');
+    }
+    if (s.confidence < 0.4) {
+      items.push('<div class="ad-item">📊 信頼度が低い序盤です（' + Math.round(s.confidence * 100) + '%）。<b>あと ' + Math.max(0, Math.round((2000 - s.d.totalG) / 100) * 100).toLocaleString() + 'G</b> 程度回すと判別精度が上がります。</div>');
+    }
+    if (s.hasDiff && s.diff < 0) {
+      items.push('<div class="ad-item"><span class="neg">💸 差枚 ' + s.diff.toLocaleString() + '枚（マイナス）</span>：低設定濃厚なら損切りラインを意識。設定4・V期待があれば許容範囲。</div>');
+    } else if (s.hasDiff && s.diff > 500) {
+      items.push('<div class="ad-item">💰 差枚 +' + s.diff.toLocaleString() + '枚：プラス圏。高設定期待があれば伸ばす価値あり。</div>');
+    }
+    if ((state.lamps.hibiscusReg.rainbow || 0) > 0) {
+      items.push('<div class="ad-item">🌈 <b>REG終了時に虹ハイビスカス出現</b>：設定1〜3は自動除外済み。設定4・Vのみに絞られています。</div>');
+    } else {
+      const nonWhite = ['blue','yellow','green','purple','rainbow'].some(c => (state.lamps.hibiscusReg[c] || 0) > 0);
+      if (nonWhite) items.push('<div class="ad-item">🎀 REG終了時ハイビスカスが白以外：<b>設定1は除外済み</b>（設定2以上濃厚法則）。</div>');
+    }
+    if (state.lamps.regSuika > 0) {
+      items.push('<div class="ad-item">🍉 REG中スイカ ×' + state.lamps.regSuika + '：高設定示唆として計算に反映済み。REG中は小役フォローを確認。</div>');
+    }
+    if (s.d.reg > 0 && s.d.totalG > 0) {
+      const regFreq = s.d.totalG / s.d.reg;
+      items.push('<div class="ad-item">📈 REG実戦確率 1/' + regFreq.toFixed(1) + '（理論は設定1:1/496 〜 V:1/372）。' +
+        (regFreq < 400 ? 'かなり良い引きです。' : regFreq > 480 ? 'やや重め。' : '標準的です。') + '</div>');
+    }
+    items.push('<div class="ad-item">🎯 次の注目ポイント：<b>REG終了時ハイビスカス</b>（白以外で設定2以上確定除外）と<b>REG中スイカ</b>、サイドランプの寒色/暖色バランスを優先チェック。</div>');
+    return items;
+  }
+
+  function openAiPanel() {
+    $('aiPrompt').textContent = buildAiPrompt();
+    $('advisorList').innerHTML = quickAdvice().join('');
+    $('aiModal').style.display = 'flex';
+  }
+  // AIリンク共通：クリック時にプロンプトを自動コピーしてから遷移
+  function copyPrompt() {
+    const text = $('aiPrompt').textContent || buildAiPrompt();
+    const done = () => sfxChime(false);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+    } else {
+      fallbackCopy(text, done);
+    }
+  }
+  function fallbackCopy(text, cb) {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    ta.remove(); if (cb) cb();
+  }
+  ['aiChatgpt', 'aiGemini'].forEach(id => {
+    $(id).addEventListener('click', copyPrompt);
+  });
+  $('aiCopy').addEventListener('click', () => {
+    copyPrompt();
+    $('aiCopy').textContent = '✅ コピーしました！';
+    setTimeout(() => { $('aiCopy').textContent = '📋 プロンプトをコピーだけする'; }, 1600);
+  });
 
   $('resetBtn').addEventListener('click', () => {
     if (!confirm('全データをリセットしますか？\n（localStorageも消去されます）')) return;
