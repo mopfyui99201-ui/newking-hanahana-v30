@@ -286,6 +286,43 @@
   .mute-btn:active { transform: scale(.93); }
   .mute-btn.muted { border-color: #5a3a3a; color: #c9a0a0; }
   .mute-btn.unmuted { border-color: var(--neon); color: var(--neon); box-shadow: 0 0 12px rgba(77,255,184,.35); }
+
+  /* 判定バッジ（液晶内） */
+  .verdict {
+    text-align:center; margin: 2px 0 8px; padding: 7px 10px; border-radius: 8px;
+    font-size: .95rem; font-weight: 900; letter-spacing: .12em;
+    border: 1px solid #22314f; background: rgba(15,25,45,.6); color: #7c93b8;
+    transition: all .3s;
+  }
+  .verdict.v-go   { color:#04121a; background:linear-gradient(90deg,var(--neon),#35e0c8); border-color:var(--neon); box-shadow:0 0 14px rgba(77,255,184,.5); }
+  .verdict.v-wait { color:#241a02; background:linear-gradient(90deg,#ffd166,#ffae42); border-color:#ffd166; box-shadow:0 0 14px rgba(255,209,102,.4); }
+  .verdict.v-stop { color:#fff; background:linear-gradient(90deg,#ff5470,#c8161e); border-color:#ff5470; box-shadow:0 0 14px rgba(255,84,112,.5); animation: stopBlink 1s step-end infinite; }
+  @keyframes stopBlink { 50% { filter: brightness(.75); } }
+  .verdict small { display:block; font-size:.58rem; font-weight:700; letter-spacing:.08em; opacity:.75; margin-top:2px; }
+
+  /* データタブ（自分/前任者/合算） */
+  .tab-bar { display:flex; gap:6px; margin-bottom:10px; }
+  .tab {
+    flex:1; padding:9px 0; border-radius:9px; border:1px solid #2c2c38;
+    background:#0c0d12; color:var(--sub); font-size:.72rem; font-weight:800;
+    letter-spacing:.1em; cursor:pointer;
+  }
+  .tab.on { background:linear-gradient(180deg,#3a2c10,#241a08); border-color:var(--gold); color:var(--gold-hi); box-shadow:0 0 8px rgba(245,197,66,.25); }
+  .tab:active { transform:scale(.95); }
+
+  /* ベル逆算補助 */
+  .diff-result {
+    margin: 8px 0; padding: 9px 10px; border-radius: 9px; text-align:center;
+    background:#0c0d12; border:1px solid #2c2c38;
+    font-size:.78rem; color:var(--sub); font-variant-numeric:tabular-nums;
+  }
+  .diff-result b { color:var(--gold-hi); }
+  .btn-apply {
+    width:100%; padding:10px; margin-top:6px; border:none; border-radius:9px;
+    background:linear-gradient(180deg,#2a5a8a,#1a3a5c); color:#dff3ff;
+    font-size:.75rem; font-weight:800; letter-spacing:.1em; cursor:pointer;
+  }
+  .btn-apply:active { transform:scale(.97); }
 </style>
 </head>
 <body>
@@ -333,6 +370,7 @@
       <div class="lcd">
         <div class="lcd-title">SETTING PREDICTOR</div>
         <div class="lcd-total"><span id="lcdTotalG">0</span><small>総G</small></div>
+        <div class="verdict" id="verdictBadge">データ不足</div>
         <div class="prob-grid" id="probGrid"></div>
         <div class="set-head">
           <span class="t">設定期待度</span>
@@ -346,6 +384,19 @@
   <!-- ===== 下部操作パネル ===== -->
   <div class="bottom-panel">
     <div class="panel-title">— CONTROL PANEL —</div>
+
+    <div class="lamp-sec-title">営業モード（事前確率）</div>
+    <div class="tab-bar" id="bizBar">
+      <button class="tab on" data-biz="normal">通常営業</button>
+      <button class="tab" data-biz="event">特日・イベ日</button>
+      <button class="tab" data-biz="flat">均等フラット</button>
+    </div>
+
+    <div class="tab-bar" id="tabBar">
+      <button class="tab on" data-tab="self">自分</button>
+      <button class="tab" data-tab="prev">前任者</button>
+      <button class="tab" data-tab="both">合算</button>
+    </div>
 
     <div class="field-row">
       <span class="fname">打ち始めG</span>
@@ -367,8 +418,11 @@
       <div class="count-box"><div class="name">ベル</div><input id="num_bell" type="number" inputmode="numeric" min="0" placeholder="任意"><div class="step"><button class="m" data-key="bell" data-d="-1">−</button><button class="p" data-key="bell" data-d="1">＋</button></div></div>
     </div>
 
-    <div class="lamp-sec-title">ボーナス終了時ハイビスカスランプ</div>
-    <div class="lamp-grid" id="hibiscusGrid"></div>
+    <div class="lamp-sec-title">BIG終了時ハイビスカスランプ</div>
+    <div class="lamp-grid" id="hibiscusBigGrid"></div>
+
+    <div class="lamp-sec-title">REG終了時ハイビスカスランプ（白以外で設定1除外）</div>
+    <div class="lamp-grid" id="hibiscusRegGrid"></div>
 
     <div class="lamp-sec-title">BIG後半 ビタ押しサイドランプ</div>
     <div class="lamp-grid five" id="sideGrid"></div>
@@ -385,7 +439,29 @@
         <div class="num" id="bigSuikaNum">0</div>
         <div class="mini"><button class="p" data-suika="big" data-d="1">+1</button><button class="m" data-suika="big" data-d="-1">-1</button></div>
       </div>
+      <div class="suika-box">
+        <div class="name">特殊点滅</div>
+        <div class="num" id="retroFlashNum">0</div>
+        <div class="mini"><button class="p" data-rct="retroFlash" data-d="1">+1</button><button class="m" data-rct="retroFlash" data-d="-1">-1</button></div>
+      </div>
+      <div class="suika-box">
+        <div class="name">レトロサウンド</div>
+        <div class="num" id="retroSoundNum">0</div>
+        <div class="mini"><button class="p" data-rct="retroSound" data-d="1">+1</button><button class="m" data-rct="retroSound" data-d="-1">-1</button></div>
+      </div>
     </div>
+
+    <div class="lamp-sec-title">ベル確率 逆算補助（差枚数）</div>
+    <div class="field-row">
+      <span class="fname">差枚数(枚)</span>
+      <input type="number" id="diffCount" inputmode="numeric" placeholder="例: +1200">
+    </div>
+    <div class="field-row">
+      <span class="fname">ベル単価(枚/回)</span>
+      <input type="number" id="bellPayout" inputmode="numeric" min="1" value="6">
+    </div>
+    <div class="diff-result" id="diffResult">差枚数を入力するとベル確率を推定します</div>
+    <button class="btn-apply" id="applyBell">ベル回数に反映</button>
 
     <div class="lamp-sec-title">設定除外</div>
     <div class="excl-grid" id="exclGrid"></div>
@@ -403,16 +479,72 @@
   const $ = id => document.getElementById(id);
   const LS_KEY = 'hanahana-v30-state-v1';
 
+  // データセット: 自分 / 前任者 / 合算（計算は選択中タブのデータで実行）
   const state = {
-    startG: '', currentG: '', totalG: '',
-    big: 0, reg: 0, bell: '',
+    activeTab: 'self',
+    tabs: {
+      self: { startG:'', currentG:'', totalG:'', big:0, reg:0, bell:'' },
+      prev: { startG:'', currentG:'', totalG:'', big:0, reg:0, bell:'' }
+    },
+    diffCount: '',      // 差枚数（枚）
+    bellPayout: '6',    // ベル単価（枚/回）
+    bizMode: 'normal',  // 営業モード: normal / event / flat
     lamps: {
-      hibiscus: { white:0, blue:0, yellow:0, green:0, purple:0, rainbow:0 },
+      hibiscusBig: { white:0, blue:0, yellow:0, green:0, purple:0, rainbow:0 },
+      hibiscusReg: { white:0, blue:0, yellow:0, green:0, purple:0, rainbow:0 },
       side:     { blue:0, yellow:0, green:0, red:0, rainbow:0 },
-      regSuika: 0, bigSuika: 0
+      regSuika: 0, bigSuika: 0, retroFlash: 0, retroSound: 0
     },
     excluded: {}
   };
+
+  function curTab() { return state.tabs[state.activeTab] || state.tabs.self; }
+  function numOf(v) { const n = parseInt(v, 10); return isNaN(n) ? 0 : n; }
+  function tabTotalG(t) {
+    if (t.totalG !== '' && t.totalG != null) return numOf(t.totalG);
+    return Math.max(0, numOf(t.currentG) - numOf(t.startG));
+  }
+  // 表示・計算に使うアクティブデータ（合算タブは両者の総和）
+  function activeData() {
+    if (state.activeTab === 'both') {
+      const a = state.tabs.self, b = state.tabs.prev;
+      return {
+        totalG: tabTotalG(a) + tabTotalG(b),
+        big: numOf(a.big) + numOf(b.big),
+        reg: numOf(a.reg) + numOf(b.reg),
+        bell: (a.bell === '' && b.bell === '') ? null : numOf(a.bell) + numOf(b.bell),
+        editable: false
+      };
+    }
+    const t = curTab();
+    return {
+      totalG: tabTotalG(t),
+      big: t.big === '' ? 0 : numOf(t.big),
+      reg: t.reg === '' ? 0 : numOf(t.reg),
+      bell: t.bell === '' ? null : numOf(t.bell),
+      editable: true
+    };
+  }
+
+  // 入力欄 → 現在タブへ書き戻し / 現在タブ → 入力欄へ反映
+  function readFields() {
+    if (state.activeTab === 'both') return;
+    const t = curTab();
+    t.startG = $('startG').value; t.currentG = $('currentG').value; t.totalG = $('totalG').value;
+    t.big = $('num_big').value; t.reg = $('num_reg').value; t.bell = $('num_bell').value;
+  }
+  function writeFields() {
+    const d = activeData();
+    const both = state.activeTab === 'both';
+    const set = (id, v, dis) => { const el = $(id); el.value = v; el.disabled = dis; };
+    set('startG', both ? '' : curTab().startG, both);
+    set('currentG', both ? '' : curTab().currentG, both);
+    set('totalG', both ? '' : curTab().totalG, both);
+    set('num_big', d.big, both);
+    set('num_reg', d.reg, both);
+    set('num_bell', d.bell == null ? '' : d.bell, both);
+    document.querySelectorAll('.count-box .step button').forEach(b => b.disabled = both);
+  }
 
   const HIBISCUS_COLORS = ['white','blue','yellow','green','purple','rainbow'];
   const SIDE_COLORS = ['blue','yellow','green','red','rainbow'];
@@ -538,7 +670,7 @@
     TOP_LAMPS.forEach(l => {
       const el = $('toplamp_' + l.key);
       if (!el) return;
-      const cnt = (state.lamps.hibiscus[l.key] || 0);
+      const cnt = (state.lamps.hibiscusReg[l.key] || 0) + (state.lamps.hibiscusBig[l.key] || 0);
       el.classList.toggle('on', cnt > 0);
     });
   }
@@ -617,26 +749,95 @@
   // ---------- カウンタ入力 ----------
   document.querySelectorAll('.count-box .step button').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (state.activeTab === 'both') return;
       const key = btn.dataset.key;
-      const cur = state[key] === '' ? 0 : (parseInt(state[key], 10) || 0);
-      state[key] = Math.max(0, cur + parseInt(btn.dataset.d, 10));
-      $('num_' + key).value = state[key] === '' ? 0 : state[key];
+      const t = curTab();
+      const cur = t[key] === '' ? 0 : (parseInt(t[key], 10) || 0);
+      t[key] = Math.max(0, cur + parseInt(btn.dataset.d, 10));
+      $('num_' + key).value = t[key];
       sfxTap(); // リール停止ボタン風タップ音
       update();
     });
   });
   ['big','reg','bell'].forEach(key => {
     $('num_' + key).addEventListener('input', e => {
+      if (state.activeTab === 'both') return;
       const v = e.target.value;
-      state[key] = v === '' ? '' : Math.max(0, parseInt(v, 10) || 0);
+      curTab()[key] = v === '' ? '' : Math.max(0, parseInt(v, 10) || 0);
       update();
     });
   });
   ['startG','currentG','totalG'].forEach(key => {
-    $(key).addEventListener('input', e => { state[key] = e.target.value; update(); });
+    $(key).addEventListener('input', e => {
+      if (state.activeTab === 'both') return;
+      curTab()[key] = e.target.value;
+      update();
+    });
   });
 
-  // ---------- スイカ ----------
+  // ---------- データタブ切替（自分 / 前任者 / 合算） ----------
+  document.querySelectorAll('#tabBar .tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      readFields();               // 旧タブへDOM値を書き戻し
+      state.activeTab = btn.dataset.tab;
+      document.querySelectorAll('#tabBar .tab').forEach(b => b.classList.toggle('on', b === btn));
+      writeFields();              // 新タブの値をDOMへ反映
+      update();
+    });
+  });
+
+  // ---------- 営業モード切替 ----------
+  document.querySelectorAll('#bizBar .tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.bizMode = btn.dataset.biz;
+      document.querySelectorAll('#bizBar .tab').forEach(b => b.classList.toggle('on', b === btn));
+      sfxTap(true);
+      update();
+    });
+  });
+
+  // ---------- ベル確率 逆算補助（差枚数） ----------
+  // 最新実戦平均獲得枚数: BIG 1回=312枚 / REG 1回=130枚
+  const BIG_PAYOUT = 312, REG_PAYOUT = 130;
+  function updateDiffResult() {
+    const diff = numOf($('diffCount').value);
+    const payout = Math.max(1, numOf($('bellPayout').value) || 6);
+    const d = activeData();
+    const el = $('diffResult');
+    if (diff === 0 && $('diffCount').value === '') { el.innerHTML = '差枚数を入力するとベル確率を推定します'; return; }
+    if (diff <= 0) { el.innerHTML = '差枚数が0以下です'; return; }
+    if (d.totalG <= 0) { el.innerHTML = '総ゲーム数が不足しています'; return; }
+    const bonusGain = numOf(d.big) * BIG_PAYOUT + numOf(d.reg) * REG_PAYOUT;
+    const bellMedals = diff - bonusGain;
+    if (bellMedals <= 0) {
+      el.innerHTML = 'ボーナス獲得分(BIG×312+REG×130=' + bonusGain + '枚)で差枚数を超過。ベル推定不可';
+      return;
+    }
+    const estBell = bellMedals / payout;
+    const denom = d.totalG / estBell;
+    el.innerHTML = 'ボーナス獲得 ' + bonusGain + '枚を除いたベル推定 <b>' + estBell.toFixed(1) + '回</b> → ベル <b>1/' + denom.toFixed(1) + '</b>';
+  }
+  $('diffCount').addEventListener('input', () => { state.diffCount = $('diffCount').value; updateDiffResult(); save(); });
+  $('bellPayout').addEventListener('input', () => { state.bellPayout = $('bellPayout').value; updateDiffResult(); save(); });
+  $('applyBell').addEventListener('click', () => {
+    const diff = numOf($('diffCount').value);
+    const payout = Math.max(1, numOf($('bellPayout').value) || 6);
+    const d = activeData();
+    if (diff <= 0 || d.totalG <= 0) { updateDiffResult(); return; }
+    const bellMedals = diff - (numOf(d.big) * BIG_PAYOUT + numOf(d.reg) * REG_PAYOUT);
+    if (bellMedals <= 0) { updateDiffResult(); return; }
+    const est = Math.max(0, Math.round(bellMedals / payout));
+    if (state.activeTab === 'both') {
+      state.tabs.self.bell = est; // 合算時は自分側に反映
+    } else {
+      curTab().bell = est;
+      $('num_bell').value = est;
+    }
+    sfxChime(false);
+    update();
+  });
+
+  // ---------- スイカ・特殊点滅・レトロサウンド ----------
   document.querySelectorAll('[data-suika]').forEach(btn => {
     btn.addEventListener('click', () => {
       const which = btn.dataset.suika === 'reg' ? 'regSuika' : 'bigSuika';
@@ -646,29 +847,33 @@
       update();
     });
   });
+  document.querySelectorAll('[data-rct]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const which = btn.dataset.rct;
+      const d = parseInt(btn.dataset.d, 10);
+      state.lamps[which] = Math.max(0, (state.lamps[which] || 0) + d);
+      if (d > 0) sfxChime(false); else sfxTap(true); // 特殊点滅・レトロサウンドも示唆扱い
+      update();
+    });
+  });
 
   // ---------- 計算・描画 ----------
-  function getTotalGames() {
-    if (state.totalG !== '' && !isNaN(parseInt(state.totalG, 10))) return parseInt(state.totalG, 10);
-    const s = parseInt(state.startG, 10) || 0;
-    const c = parseInt(state.currentG, 10) || 0;
-    return Math.max(0, c - s);
-  }
   function observedFreq(total, count) {
     if (!total || total <= 0) return null;
     return total / Math.max(0, count);
   }
 
   function update() {
-    const total = getTotalGames();
-    $('lcdTotalG').textContent = total.toLocaleString();
-    $('totalGNote').textContent = (state.totalG === '' && total > 0) ? '（総G=' + total + '）' : '';
+    const d = activeData();
+    $('lcdTotalG').textContent = d.totalG.toLocaleString();
+    const act = state.activeTab === 'both' ? state.tabs.self : curTab();
+    $('totalGNote').textContent = (act.totalG === '' && d.totalG > 0) ? '（総G=' + d.totalG + '）' : '';
 
     const probs = [
-      ['BIG', observedFreq(total, state.big|0)],
-      ['REG', observedFreq(total, state.reg|0)],
-      ['合算', observedFreq(total, (state.big|0) + (state.reg|0))],
-      ['ベル', state.bell === '' ? null : observedFreq(total, state.bell|0)]
+      ['BIG', observedFreq(d.totalG, d.big)],
+      ['REG', observedFreq(d.totalG, d.reg)],
+      ['合算', observedFreq(d.totalG, d.big + d.reg)],
+      ['ベル', d.bell == null ? null : observedFreq(d.totalG, d.bell)]
     ];
     $('probGrid').innerHTML = probs.map(([name, f]) =>
       '<div class="prob-item"><div class="p-name">' + name + '</div>' +
@@ -677,16 +882,20 @@
 
     $('regSuikaNum').textContent = state.lamps.regSuika;
     $('bigSuikaNum').textContent = state.lamps.bigSuika;
+    $('retroFlashNum').textContent = state.lamps.retroFlash;
+    $('retroSoundNum').textContent = state.lamps.retroSound;
 
     const excluded = HanahanaCalc.SETTING_ORDER.filter(k => state.excluded[k]);
     const calcState = {
-      totalG: total,
-      big: state.big === '' ? 0 : state.big,
-      reg: state.reg === '' ? 0 : state.reg,
-      bell: state.bell === '' ? null : state.bell,
+      totalG: d.totalG,
+      big: d.big,
+      reg: d.reg,
+      bell: d.bell,
       lamps: state.lamps
     };
-    const { probabilities } = HanahanaCalc.calculateHanahanaProbabilities(calcState, { excluded });
+    const { probabilities, autoExcluded } = HanahanaCalc.calculateHanahanaProbabilities(calcState, {
+      excluded, bizMode: state.bizMode
+    });
 
     HanahanaCalc.SETTING_ORDER.forEach((key, i) => {
       const p = probabilities[key] || 0;
@@ -695,11 +904,37 @@
       if (bar) {
         bar.style.width = pct + '%';
         bar.dataset.pct = pct + '%';
-        bar.classList.toggle('dim', state.excluded[key]);
+        const auto = autoExcluded.includes(key);
+        bar.classList.toggle('dim', state.excluded[key] || auto);
         bar.style.background = NEON[i % NEON.length];
       }
     });
 
+    // 判定バッジ: 最高期待度の設定から 続行推奨/様子見/ヤメ時注意 を判定
+    const badge = $('verdictBadge');
+    if (d.totalG <= 0 && d.big + d.reg === 0) {
+      badge.className = 'verdict v-none';
+      badge.innerHTML = 'データ不足<small>G数・ボーナス回数を入力してください</small>';
+    } else {
+      let topKey = HanahanaCalc.SETTING_ORDER[0], topP = -1;
+      HanahanaCalc.SETTING_ORDER.forEach(k => {
+        if ((probabilities[k] || 0) > topP) { topP = probabilities[k] || 0; topKey = k; }
+      });
+      const topName = HanahanaCalc.HANAHANA_SETTINGS[topKey].name;
+      const pct = (topP * 100).toFixed(1);
+      if (topP >= 0.60) {
+        badge.className = 'verdict v-go';
+        badge.innerHTML = '続行推奨<small>' + topName + ' ' + pct + '% が最有力</small>';
+      } else if (topP >= 0.35) {
+        badge.className = 'verdict v-wait';
+        badge.innerHTML = '様子見<small>' + topName + ' ' + pct + '% が最有力</small>';
+      } else {
+        badge.className = 'verdict v-stop';
+        badge.innerHTML = 'ヤメ時注意<small>' + topName + ' ' + pct + '%（確定できず）</small>';
+      }
+    }
+
+    updateDiffResult();
     syncTopLamps();
     save();
   }
@@ -716,12 +951,30 @@
       const raw = localStorage.getItem(LS_KEY);
       if (!raw) return;
       const d = JSON.parse(raw);
-      ['startG','currentG','totalG','big','reg','bell'].forEach(k => { if (d[k] !== undefined) state[k] = d[k]; });
+      // 新形式: tabs/lamps入れ子。旧形式(フラット)は self タブへ移行
+      if (d.tabs) {
+        ['self','prev'].forEach(t => {
+          if (d.tabs[t]) Object.assign(state.tabs[t], d.tabs[t]);
+        });
+        state.activeTab = d.activeTab === 'prev' || d.activeTab === 'both' ? d.activeTab : 'self';
+      } else {
+        ['startG','currentG','totalG','big','reg','bell'].forEach(k => {
+          if (d[k] !== undefined) state.tabs.self[k] = d[k];
+        });
+      }
+      if (d.bizMode) state.bizMode = d.bizMode;
+      if (d.diffCount !== undefined) state.diffCount = d.diffCount;
+      if (d.bellPayout !== undefined) state.bellPayout = d.bellPayout;
       if (d.lamps) {
-        Object.assign(state.lamps.hibiscus, d.lamps.hibiscus || {});
-        Object.assign(state.lamps.side, d.lamps.side || {});
-        state.lamps.regSuika = d.lamps.regSuika || 0;
-        state.lamps.bigSuika = d.lamps.bigSuika || 0;
+        const L = d.lamps;
+        // 旧形式 hibiscus{...} → hibiscusBig へ移行
+        if (L.hibiscusBig) Object.assign(state.lamps.hibiscusBig, L.hibiscusBig);
+        else if (L.hibiscus) Object.assign(state.lamps.hibiscusBig, L.hibiscus);
+        if (L.hibiscusReg) Object.assign(state.lamps.hibiscusReg, L.hibiscusReg);
+        if (L.side) Object.assign(state.lamps.side, L.side);
+        ['regSuika','bigSuika','retroFlash','retroSound'].forEach(k => {
+          if (L[k] !== undefined) state.lamps[k] = L[k];
+        });
       }
       if (d.excluded) state.excluded = d.excluded;
     } catch (e) {}
@@ -736,16 +989,17 @@
 
   // ---------- 初期化 ----------
   buildTopLamps();
-  buildLamps('hibiscusGrid', HIBISCUS_COLORS, 'hibiscus');
+  buildLamps('hibiscusBigGrid', HIBISCUS_COLORS, 'hibiscusBig');
+  buildLamps('hibiscusRegGrid', HIBISCUS_COLORS, 'hibiscusReg');
   buildLamps('sideGrid', SIDE_COLORS, 'side');
   buildSettings();
   restore();
-  $('startG').value = state.startG;
-  $('currentG').value = state.currentG;
-  $('totalG').value = state.totalG;
-  $('num_big').value = state.big === '' ? '' : state.big;
-  $('num_reg').value = state.reg === '' ? '' : state.reg;
-  $('num_bell').value = state.bell === '' ? '' : state.bell;
+  // タブ・営業モードUIを復元状態に合わせる
+  document.querySelectorAll('#tabBar .tab').forEach(b => b.classList.toggle('on', b.dataset.tab === state.activeTab));
+  document.querySelectorAll('#bizBar .tab').forEach(b => b.classList.toggle('on', b.dataset.biz === state.bizMode));
+  $('diffCount').value = state.diffCount;
+  $('bellPayout').value = state.bellPayout;
+  writeFields();
   refreshMuteBtn();
   update();
 })();
