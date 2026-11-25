@@ -287,6 +287,22 @@
   .mute-btn.muted { border-color: #5a3a3a; color: #c9a0a0; }
   .mute-btn.unmuted { border-color: var(--neon); color: var(--neon); box-shadow: 0 0 12px rgba(77,255,184,.35); }
 
+  /* 管理者ローカルモードバッジ（127.0.0.1/localファイルでのみ表示） */
+  .admin-bar {
+    position: fixed; top: calc(10px + env(safe-area-inset-top)); left: 10px; z-index: 99;
+    display: none; align-items: center; gap: 8px;
+    padding: 8px 12px; border-radius: 20px;
+    border: 2px solid var(--gold); background: rgba(20,16,8,.92);
+    color: var(--gold-hi); font-size: .72rem; font-weight: 800; letter-spacing: .05em;
+    box-shadow: 0 3px 10px rgba(0,0,0,.6), 0 0 12px rgba(245,197,66,.3);
+  }
+  .admin-bar button {
+    border: none; border-radius: 12px; padding: 5px 10px;
+    background: linear-gradient(180deg,var(--gold-hi),var(--gold)); color:#241a02;
+    font-size: .68rem; font-weight: 900; cursor: pointer;
+  }
+  .admin-bar button:active { transform: scale(.93); }
+
   /* 判定バッジ（液晶内） */
   .verdict {
     text-align:center; margin: 2px 0 8px; padding: 7px 10px; border-radius: 8px;
@@ -411,6 +427,7 @@
 </svg>
 
 <button class="mute-btn muted" id="muteBtn">🔇 消音</button>
+<div class="admin-bar" id="adminBar">👑 管理者ローカルモード<button id="backupBtn">履歴JSON保存</button></div>
 
 <div class="cabinet">
 <div class="cabinet-inner">
@@ -759,6 +776,32 @@
     try { localStorage.setItem(LS_MUTE, muted ? '1' : '0'); } catch (e) {}
     refreshMuteBtn();
     if (!muted) sfxTap(); // ONにした瞬間に確認音
+  });
+
+  /* ============ 管理者ローカルモード（127.0.0.1 / localhost / file:// のみ） ============
+   * GitHub Pages等の公開閲覧者には一切表示されず、外部通信も行わない。
+   * データは各端末の localStorage のみに保存され、閲覧者間・管理者間で共有されない。 */
+  const isLocalAdmin = ['localhost', '127.0.0.1', '[::1]', ''].includes(location.hostname)
+                    || location.protocol === 'file:';
+  if (isLocalAdmin) $('adminBar').style.display = 'flex';
+  $('backupBtn').addEventListener('click', () => {
+    try {
+      const payload = {
+        app: 'ニューキングハナハナV-30 設定判別',
+        exportedAt: new Date().toISOString(),
+        state: state,
+        history: getHistory()
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'hanahana-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+      sfxChime(false);
+    } catch (e) { alert('バックアップの作成に失敗しました: ' + e.message); }
   });
 
   function colorLabel(c) {
