@@ -3,258 +3,383 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>ニューキングハナハナV 設定判別</title>
+<title>ニューキングハナハナV-30 設定判別</title>
 <style>
   :root {
-    --bg: #0b0e14;
-    --panel: #141a26;
-    --panel2: #1b2334;
-    --line: #26314a;
-    --text: #e8edf7;
-    --sub: #8b96b3;
-    --accent: #35e0c8;
-    --accent2: #7c6cff;
-    --danger: #ff5470;
+    --gold: #f5c542;
+    --gold-hi: #ffe9a3;
+    --gold-dk: #9a6b12;
+    --red: #c8161e;
+    --red-dk: #6e0d13;
+    --black: #0a0a0c;
+    --panel: #17181d;
+    --lcd-bg: #05070c;
     --neon: #4dffb8;
+    --txt: #f2ead8;
+    --sub: #9a917e;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html { font-size: 16px; }
+  html { font-size: 15px; }
   body {
     margin: 0;
-    background: var(--bg);
-    color: var(--text);
+    min-height: 100vh;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #2a1218 0%, transparent 60%),
+      radial-gradient(900px 500px at 50% 110%, #101c2a 0%, transparent 55%),
+      #05060a;
+    color: var(--txt);
     font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
-    padding: 12px 12px calc(24px + env(safe-area-inset-bottom));
-    max-width: 480px;
-    margin: 0 auto;
+    padding: 14px 10px calc(30px + env(safe-area-inset-bottom));
     user-select: none;
   }
-  h1 {
-    font-size: 1.15rem;
-    margin: 4px 0 12px;
-    text-align: center;
-    letter-spacing: .08em;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-  .card {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    padding: 14px;
-    margin-bottom: 12px;
-  }
-  .card h2 {
-    font-size: .8rem;
-    color: var(--sub);
-    margin: 0 0 10px;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-  }
-  .row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-  .row:last-child { margin-bottom: 0; }
-  label.field-label { flex: 0 0 42%; font-size: .85rem; color: var(--sub); }
-  input[type=number], input[type=text] {
-    flex: 1;
-    min-width: 0;
-    background: var(--panel2);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    color: var(--text);
-    font-size: 1.1rem;
-    font-weight: 700;
-    padding: 10px 12px;
-    text-align: right;
-    outline: none;
-  }
-  input:focus { border-color: var(--accent); }
-  .auto-note { font-size: .7rem; color: var(--accent); }
 
-  /* +1/-1 ステッパー */
-  .stepper { display: flex; gap: 8px; align-items: stretch; margin-bottom: 10px; }
-  .stepper .val-wrap { flex: 1; display: flex; flex-direction: column; justify-content: center; }
-  .stepper .name { font-size: .78rem; color: var(--sub); margin-bottom: 2px; }
-  .stepper input { text-align: center; }
-  .stepper button {
-    width: 52px;
-    border: none;
-    border-radius: 10px;
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: #04121a;
-    background: var(--accent);
-    cursor: pointer;
-  }
-  .stepper button.minus { background: #5a6880; color: #dfe6f5; }
-  .stepper button:active { transform: scale(.93); filter: brightness(1.15); }
-
-  /* 実戦確率一覧 */
-  .prob-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .prob-item {
-    background: var(--panel2);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 10px 8px;
-    text-align: center;
-  }
-  .prob-item .p-name { font-size: .72rem; color: var(--sub); letter-spacing: .08em; }
-  .prob-item .p-val { font-size: 1.05rem; font-weight: 800; font-variant-numeric: tabular-nums; }
-  .prob-item .p-obs { font-size: .68rem; color: var(--sub); font-variant-numeric: tabular-nums; }
-
-  /* ランプカウントボタン群 */
-  .lamp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .lamp-btn {
+  /* ============ 筐体フレーム ============ */
+  .cabinet {
     position: relative;
-    border: 1px solid var(--line);
-    background: var(--panel2);
-    border-radius: 10px;
-    padding: 12px 4px 8px;
-    color: var(--text);
-    font-size: .78rem;
-    cursor: pointer;
+    max-width: 430px;
+    margin: 0 auto;
+    border-radius: 26px;
+    padding: 14px 14px 18px;
+    background:
+      linear-gradient(160deg, #2a2a30 0%, #101014 30%, #1c1c22 60%, #0c0c10 100%);
+    border: 3px solid #3a2c10;
+    box-shadow:
+      0 0 0 2px #0a0a0c,
+      0 0 0 4px #6b4d15,
+      0 0 40px rgba(200,22,30,.35),
+      0 20px 60px rgba(0,0,0,.8),
+      inset 0 1px 0 rgba(255,255,255,.12);
     overflow: hidden;
   }
-  .lamp-btn:active { transform: scale(.94); }
-  .lamp-btn .dot {
-    display: block;
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    margin: 0 auto 5px;
-    box-shadow: 0 0 8px currentColor;
+  /* 左右の赤いサイドピラー */
+  .cabinet::before, .cabinet::after {
+    content: '';
+    position: absolute; top: 0; bottom: 0; width: 16px;
+    background: linear-gradient(180deg, var(--red) 0%, var(--red-dk) 55%, #3d070b 100%);
+    box-shadow: inset 0 0 12px rgba(0,0,0,.7);
   }
-  .lamp-btn .cnt {
-    position: absolute; top: 4px; right: 6px;
-    font-size: .68rem; font-weight: 700; color: var(--accent);
-    font-variant-numeric: tabular-nums;
-  }
-  .lamp-btn.zero .cnt { color: var(--sub); }
-  .lamp-btn.on { border-color: var(--accent); }
-  .lamp-wide { grid-column: 1 / -1; }
+  .cabinet::before { left: 0; border-right: 2px solid var(--gold-dk); }
+  .cabinet::after { right: 0; border-left: 2px solid var(--gold-dk); }
+  .cabinet-inner { position: relative; z-index: 2; padding: 0 4px; }
 
-  /* スイカカウンタ */
-  .counter-pair { display: flex; gap: 10px; }
-  .counter-box {
-    flex: 1; background: var(--panel2); border: 1px solid var(--line);
-    border-radius: 10px; padding: 10px; text-align: center;
+  /* ============ トップデッキ（金ロゴ＋ランプ） ============ */
+  .top-deck {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px 12px;
+    border-radius: 16px;
+    background:
+      linear-gradient(180deg, #1e1e26 0%, #101014 100%);
+    border: 2px solid #4a3a14;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,.8), 0 1px 0 rgba(255,233,163,.15);
+    position: relative;
+    overflow: hidden;
   }
-  .counter-box .name { font-size: .75rem; color: var(--sub); margin-bottom: 6px; }
-  .counter-box .num { font-size: 1.6rem; font-weight: 800; font-variant-numeric: tabular-nums; }
-  .counter-box .mini { display: flex; gap: 6px; margin-top: 8px; }
-  .counter-box .mini button {
-    flex: 1; padding: 10px 0; font-size: 1.05rem; font-weight: 800;
-    border: none; border-radius: 8px; cursor: pointer;
+  .top-deck::after { /* 金の飾りライン */
+    content:''; position:absolute; left:10px; right:10px; bottom:4px; height:2px;
+    background: linear-gradient(90deg, transparent, var(--gold-dk) 20%, var(--gold) 50%, var(--gold-dk) 80%, transparent);
+    opacity:.6;
   }
-  .counter-box .mini button.p { background: var(--accent); color: #04121a; }
-  .counter-box .mini button.m { background: #5a6880; color: #dfe6f5; }
-  .counter-box .mini button:active { transform: scale(.93); }
-
-  /* 設定除外 & 期待度バー */
-  .set-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
-  .set-row:last-child { margin-bottom: 0; }
-  .set-row input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); }
-  .set-row .sname { flex: 0 0 64px; font-size: .85rem; font-weight: 700; }
-  .set-row.excluded .sname { color: var(--sub); text-decoration: line-through; }
-  .bar-wrap { flex: 1; height: 22px; background: var(--panel2); border-radius: 6px; overflow: hidden; position: relative; }
-  .bar-fill {
-    height: 100%; width: 0%;
-    border-radius: 6px;
-    transition: width .45s cubic-bezier(.22,1,.36,1), background .3s;
+  .logo-block { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+  .hibiscus-svg { flex: 0 0 auto; filter: drop-shadow(0 0 6px rgba(255,90,120,.6)); }
+  .logo-text {
+    font-weight: 900;
+    font-style: italic;
+    letter-spacing: .02em;
+    line-height: 1.05;
+    font-size: clamp(1.05rem, 5.4vw, 1.5rem);
+    background: linear-gradient(180deg, #fff6d8 0%, var(--gold-hi) 25%, var(--gold) 50%, #b8860b 78%, #ffe9a3 100%);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 2px 0 #4a2f05) drop-shadow(0 0 10px rgba(245,197,66,.35));
+  }
+  .logo-sub {
+    font-size: .62rem; font-weight: 800; letter-spacing: .28em; color: var(--red);
+    text-shadow: 0 0 6px rgba(255,60,70,.7);
+    margin-top: 2px;
+  }
+  .lamp-strip { display: flex; gap: 5px; align-items: center; }
+  .lamp {
+    width: 15px; height: 15px; border-radius: 50%;
+    background: #1a1a20; border: 1px solid #333;
+    transition: all .25s;
     position: relative;
   }
-  .bar-fill::after {
-    content: attr(data-pct);
-    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
-    font-size: .68rem; font-weight: 700; color: #04121a; mix-blend-mode: normal;
-    text-shadow: 0 0 4px #fff;
+  .lamp.on { box-shadow: 0 0 10px 2px currentColor; border-color: currentColor; }
+  .lamp.on::after {
+    content:''; position:absolute; inset:2px; border-radius:50%;
+    background: currentColor; opacity:.85;
+    animation: lampPulse 1.1s ease-in-out infinite alternate;
   }
-  .bar-fill.dim { filter: grayscale(.7) brightness(.6); }
-  .set-pct { flex: 0 0 48px; text-align: right; font-size: .8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  @keyframes lampPulse { from { opacity:.55; } to { opacity:1; } }
+
+  /* ============ リール窓（液晶モニター） ============ */
+  .mid-deck {
+    position: relative;
+    margin: 12px 0 10px;
+    padding: 0 26px;
+  }
+  .reel-frame {
+    position: relative;
+    border-radius: 18px;
+    padding: 10px;
+    background:
+      linear-gradient(145deg, #5a5a64 0%, #2a2a32 30%, #4a4a55 55%, #1a1a20 100%);
+    border: 2px solid var(--gold-dk);
+    box-shadow:
+      inset 0 2px 6px rgba(255,255,255,.15),
+      inset 0 -3px 8px rgba(0,0,0,.8),
+      0 4px 14px rgba(0,0,0,.7);
+  }
+  .reel-frame::before, .reel-frame::after { /* 窓の金属リベット */
+    content:''; position:absolute; top:6px; bottom:6px; width:8px;
+    background: radial-gradient(circle at 50% 20%, #ffe9a3, #8a6a1a 60%, #3a2c05);
+    border-radius: 4px;
+  }
+  .reel-frame::before { left:6px; }
+  .reel-frame::after { right:6px; }
+  .lcd {
+    position: relative;
+    border-radius: 10px;
+    background:
+      radial-gradient(120% 90% at 50% 0%, #0d1526 0%, var(--lcd-bg) 55%, #02030a 100%);
+    border: 1px solid #000;
+    box-shadow: inset 0 0 30px rgba(40,120,200,.15), inset 0 0 4px #000;
+    padding: 12px 12px 14px;
+    overflow: hidden;
+  }
+  .lcd::after { /* 液晶スキャンライン */
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px);
+  }
+  .lcd-title {
+    text-align:center; font-size:.62rem; letter-spacing:.3em; color:#5f7ba6;
+    margin-bottom:8px; font-weight:700;
+  }
+  .lcd-total {
+    text-align:center; font-size:1.5rem; font-weight:900; font-variant-numeric:tabular-nums;
+    color: var(--neon);
+    text-shadow: 0 0 12px rgba(77,255,184,.6), 0 0 3px var(--neon);
+    margin-bottom: 10px;
+  }
+  .lcd-total small { font-size:.7rem; color:var(--sub); font-weight:400; margin-left:4px; }
+  .prob-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:12px; }
+  .prob-item {
+    background: rgba(20,35,60,.5);
+    border:1px solid #1d3355; border-radius:8px; padding:7px 2px; text-align:center;
+  }
+  .prob-item .p-name { font-size:.6rem; color:#7c93b8; letter-spacing:.1em; }
+  .prob-item .p-val { font-size:.95rem; font-weight:800; color:#dff3ff; font-variant-numeric:tabular-nums; }
+
+  .set-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+  .set-head .t { font-size:.62rem; letter-spacing:.25em; color:#5f7ba6; font-weight:700; }
+  .set-head .h { font-size:.55rem; color:#41536f; }
+  .set-row { display:flex; align-items:center; gap:8px; margin-bottom:7px; }
+  .set-row .sname { flex:0 0 58px; font-size:.78rem; font-weight:700; color:var(--txt); }
+  .set-row.excluded .sname { color:#5a5a64; text-decoration:line-through; }
+  .bar-wrap { flex:1; height:18px; background:rgba(10,16,30,.8); border:1px solid #14233d; border-radius:5px; overflow:hidden; }
+  .bar-fill { height:100%; width:0%; border-radius:4px; transition:width .5s cubic-bezier(.22,1,.36,1); position:relative; }
+  .bar-fill::after {
+    content:attr(data-pct); position:absolute; right:5px; top:50%; transform:translateY(-50%);
+    font-size:.62rem; font-weight:800; color:#04121a;
+    text-shadow:0 0 4px rgba(255,255,255,.8);
+  }
+  .bar-fill.dim { filter:grayscale(.8) brightness(.55); }
+
+  /* ============ 下部操作パネル ============ */
+  .bottom-panel {
+    border-radius: 16px;
+    background: linear-gradient(180deg, #20202a 0%, #121218 100%);
+    border: 2px solid #4a3a14;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,.85), 0 1px 0 rgba(255,233,163,.12);
+    padding: 12px;
+  }
+  .panel-title {
+    text-align:center; font-size:.62rem; letter-spacing:.3em; color:var(--gold);
+    font-weight:800; margin-bottom:10px;
+    text-shadow:0 0 8px rgba(245,197,66,.4);
+  }
+  .field-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+  .field-row .fname { flex:0 0 38%; font-size:.75rem; color:var(--sub); }
+  .field-row input {
+    flex:1; min-width:0; background:#0c0d12; border:1px solid #2c2c38; border-radius:8px;
+    color:var(--txt); font-size:1rem; font-weight:800; padding:9px 10px; text-align:right; outline:none;
+    font-variant-numeric:tabular-nums;
+  }
+  .field-row input:focus { border-color:var(--gold); }
+  .auto-note { font-size:.6rem; color:var(--neon); }
+
+  /* BIG/REG/ベル カウンタ（BET風ボタン） */
+  .count-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px; }
+  .count-box {
+    background:#0c0d12; border:1px solid #2c2c38; border-radius:10px;
+    padding:8px 6px; text-align:center;
+  }
+  .count-box .name { font-size:.62rem; color:var(--sub); letter-spacing:.08em; margin-bottom:4px; }
+  .count-box input {
+    width:100%; background:transparent; border:none; color:var(--gold-hi);
+    font-size:1.3rem; font-weight:900; text-align:center; outline:none;
+    font-variant-numeric:tabular-nums;
+  }
+  .count-box .step { display:flex; gap:5px; margin-top:6px; }
+  .count-box .step button {
+    flex:1; padding:9px 0; font-size:1rem; font-weight:900; border:none; border-radius:7px;
+    cursor:pointer; color:#04121a;
+  }
+  .count-box .step button.p { background:linear-gradient(180deg,var(--neon),#1fae85); }
+  .count-box .step button.m { background:linear-gradient(180deg,#5a6880,#3a4458); color:#dfe6f5; }
+  .count-box .step button:active { transform:scale(.92); }
+
+  /* 色別ランプカウントボタン */
+  .lamp-sec-title { font-size:.65rem; color:var(--gold); letter-spacing:.15em; font-weight:800; margin:10px 0 6px; }
+  .lamp-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; }
+  .lamp-grid.five { grid-template-columns:repeat(5,1fr); }
+  .lamp-btn {
+    position:relative; border:1px solid #2c2c38; background:#0c0d12;
+    border-radius:9px; padding:9px 2px 7px; color:var(--txt);
+    font-size:.62rem; cursor:pointer; overflow:hidden;
+  }
+  .lamp-btn:active { transform:scale(.93); }
+  .lamp-btn .dot { display:block; width:13px; height:13px; border-radius:50%; margin:0 auto 4px; box-shadow:0 0 7px currentColor; }
+  .lamp-btn .cnt { position:absolute; top:3px; right:5px; font-size:.6rem; font-weight:800; color:var(--neon); font-variant-numeric:tabular-nums; }
+  .lamp-btn.zero .cnt { color:#4a4a55; }
+
+  /* スイカカウンタ */
+  .suika-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+  .suika-box { background:#0c0d12; border:1px solid #2c2c38; border-radius:10px; padding:9px; text-align:center; }
+  .suika-box .name { font-size:.62rem; color:var(--sub); margin-bottom:5px; }
+  .suika-box .num { font-size:1.5rem; font-weight:900; color:var(--gold-hi); font-variant-numeric:tabular-nums; }
+  .suika-box .mini { display:flex; gap:6px; margin-top:7px; }
+  .suika-box .mini button { flex:1; padding:9px 0; font-size:1rem; font-weight:900; border:none; border-radius:7px; cursor:pointer; }
+  .suika-box .mini button.p { background:linear-gradient(180deg,var(--neon),#1fae85); color:#04121a; }
+  .suika-box .mini button.m { background:#3a4458; color:#dfe6f5; }
+  .suika-box .mini button:active { transform:scale(.93); }
+
+  /* 設定除外チップ */
+  .excl-grid { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .excl-chip {
+    flex:1 1 30%; min-width:70px; padding:8px 4px; border-radius:8px; text-align:center;
+    font-size:.68rem; font-weight:800; border:1px solid #2c2c38; background:#0c0d12;
+    color:var(--txt); cursor:pointer;
+  }
+  .excl-chip.on { border-color:var(--red); color:#ff8a95; background:rgba(200,22,30,.18); }
+  .excl-chip:active { transform:scale(.94); }
 
   .btn-reset {
-    width: 100%; padding: 14px; border: none; border-radius: 12px;
-    background: linear-gradient(90deg, #ff5470, #ff8a5c);
-    color: #fff; font-size: .95rem; font-weight: 800; letter-spacing: .1em;
-    cursor: pointer; margin-top: 4px;
+    width:100%; margin-top:12px; padding:14px; border:none; border-radius:12px;
+    background:linear-gradient(90deg,var(--red),#ff8a5c); color:#fff;
+    font-size:.85rem; font-weight:900; letter-spacing:.15em; cursor:pointer;
   }
-  .btn-reset:active { transform: scale(.97); }
-  .saved-note { text-align: center; font-size: .68rem; color: var(--sub); margin-top: 10px; }
+  .btn-reset:active { transform:scale(.97); }
+  .saved-note { text-align:center; font-size:.6rem; color:#4a4a55; margin-top:8px; }
 </style>
 </head>
 <body>
-<h1>ニューキングハナハナV 設定判別</h1>
 
-<!-- 基本データ -->
-<div class="card">
-  <h2>基本データ</h2>
-  <div class="row">
-    <label class="field-label">打ち始めG</label>
-    <input type="number" id="startG" inputmode="numeric" min="0" placeholder="0">
-  </div>
-  <div class="row">
-    <label class="field-label">現在G <span class="auto-note" id="totalGNote"></span></label>
-    <input type="number" id="currentG" inputmode="numeric" min="0" placeholder="0">
-  </div>
-  <div class="row">
-    <label class="field-label">総ゲーム数 <span class="auto-note">(自動/直接可)</span></label>
-    <input type="number" id="totalG" inputmode="numeric" min="0" placeholder="自動計算">
-  </div>
-</div>
+<!-- ハイビスカスSVGシンボル（defs） -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <g id="hibiscus">
+      <g fill="#ff3b5c">
+        <ellipse cx="0" cy="-11" rx="6.5" ry="11"/>
+        <ellipse cx="0" cy="-11" rx="6.5" ry="11" transform="rotate(72)"/>
+        <ellipse cx="0" cy="-11" rx="6.5" ry="11" transform="rotate(144)"/>
+        <ellipse cx="0" cy="-11" rx="6.5" ry="11" transform="rotate(216)"/>
+        <ellipse cx="0" cy="-11" rx="6.5" ry="11" transform="rotate(288)"/>
+      </g>
+      <circle r="5.5" fill="#ffd166"/>
+      <circle r="2.6" fill="#c8161e"/>
+      <g stroke="#ffb3c0" stroke-width="1" opacity=".7">
+        <line x1="0" y1="0" x2="0" y2="-14"/>
+      </g>
+    </g>
+  </defs>
+</svg>
 
-<!-- 回数カウント -->
-<div class="card">
-  <h2>回数カウント</h2>
-  <div class="stepper" id="counterBig"></div>
-  <div class="stepper" id="counterReg"></div>
-  <div class="stepper" id="counterBell"></div>
-</div>
+<div class="cabinet">
+<div class="cabinet-inner">
 
-<!-- 現在の実戦確率 -->
-<div class="card">
-  <h2>現在の実戦確率</h2>
-  <div class="prob-grid" id="probGrid"></div>
-</div>
-
-<!-- 示唆カウント -->
-<div class="card">
-  <h2>ボーナス終了時ハイビスカスランプ</h2>
-  <div class="lamp-grid" id="hibiscusGrid"></div>
-</div>
-<div class="card">
-  <h2>BIG後半 ビタ押しサイドランプ</h2>
-  <div class="lamp-grid" id="sideGrid"></div>
-</div>
-<div class="card">
-  <h2>スイカ示唆</h2>
-  <div class="counter-pair">
-    <div class="counter-box">
-      <div class="name">REG中 スイカ揃い</div>
-      <div class="num" id="regSuikaNum">0</div>
-      <div class="mini">
-        <button class="p" data-suika="reg" data-d="1">+1</button>
-        <button class="m" data-suika="reg" data-d="-1">-1</button>
+  <!-- ===== トップデッキ：黄金ロゴ＋点灯ランプ ===== -->
+  <div class="top-deck">
+    <div class="logo-block">
+      <svg class="hibiscus-svg" width="46" height="46" viewBox="-20 -20 40 40"><use href="#hibiscus"/></svg>
+      <div>
+        <div class="logo-text">NEW KING<br>HANAHANA</div>
+        <div class="logo-sub">V-30</div>
       </div>
     </div>
-    <div class="counter-box">
-      <div class="name">BIG前半 スイカ出現</div>
-      <div class="num" id="bigSuikaNum">0</div>
-      <div class="mini">
-        <button class="p" data-suika="big" data-d="1">+1</button>
-        <button class="m" data-suika="big" data-d="-1">-1</button>
+    <div class="lamp-strip" id="lampStrip"></div>
+  </div>
+
+  <!-- ===== リール窓＝液晶モニター ===== -->
+  <div class="mid-deck">
+    <div class="reel-frame">
+      <div class="lcd">
+        <div class="lcd-title">SETTING PREDICTOR</div>
+        <div class="lcd-total"><span id="lcdTotalG">0</span><small>総G</small></div>
+        <div class="prob-grid" id="probGrid"></div>
+        <div class="set-head">
+          <span class="t">設定期待度</span>
+          <span class="h">タップで除外 / 下部パネルでも可</span>
+        </div>
+        <div id="settingRows"></div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- 設定除外＆期待度 -->
-<div class="card">
-  <h2>設定除外 ＆ 期待度</h2>
-  <div id="settingRows"></div>
-</div>
+  <!-- ===== 下部操作パネル ===== -->
+  <div class="bottom-panel">
+    <div class="panel-title">— CONTROL PANEL —</div>
 
-<button class="btn-reset" id="resetBtn">リセット</button>
-<div class="saved-note" id="savedNote">入力は自動保存されます</div>
+    <div class="field-row">
+      <span class="fname">打ち始めG</span>
+      <input type="number" id="startG" inputmode="numeric" min="0" placeholder="0">
+    </div>
+    <div class="field-row">
+      <span class="fname">現在G <span class="auto-note" id="totalGNote"></span></span>
+      <input type="number" id="currentG" inputmode="numeric" min="0" placeholder="0">
+    </div>
+    <div class="field-row">
+      <span class="fname">総ゲーム数</span>
+      <input type="number" id="totalG" inputmode="numeric" min="0" placeholder="自動計算">
+    </div>
+
+    <div class="lamp-sec-title">回数カウント</div>
+    <div class="count-grid">
+      <div class="count-box"><div class="name">BIG</div><input id="num_big" type="number" inputmode="numeric" min="0" value="0"><div class="step"><button class="m" data-key="big" data-d="-1">−</button><button class="p" data-key="big" data-d="1">＋</button></div></div>
+      <div class="count-box"><div class="name">REG</div><input id="num_reg" type="number" inputmode="numeric" min="0" value="0"><div class="step"><button class="m" data-key="reg" data-d="-1">−</button><button class="p" data-key="reg" data-d="1">＋</button></div></div>
+      <div class="count-box"><div class="name">ベル</div><input id="num_bell" type="number" inputmode="numeric" min="0" placeholder="任意"><div class="step"><button class="m" data-key="bell" data-d="-1">−</button><button class="p" data-key="bell" data-d="1">＋</button></div></div>
+    </div>
+
+    <div class="lamp-sec-title">ボーナス終了時ハイビスカスランプ</div>
+    <div class="lamp-grid" id="hibiscusGrid"></div>
+
+    <div class="lamp-sec-title">BIG後半 ビタ押しサイドランプ</div>
+    <div class="lamp-grid five" id="sideGrid"></div>
+
+    <div class="lamp-sec-title">スイカ示唆</div>
+    <div class="suika-grid">
+      <div class="suika-box">
+        <div class="name">REG中 スイカ揃い</div>
+        <div class="num" id="regSuikaNum">0</div>
+        <div class="mini"><button class="p" data-suika="reg" data-d="1">+1</button><button class="m" data-suika="reg" data-d="-1">-1</button></div>
+      </div>
+      <div class="suika-box">
+        <div class="name">BIG前半 スイカ出現</div>
+        <div class="num" id="bigSuikaNum">0</div>
+        <div class="mini"><button class="p" data-suika="big" data-d="1">+1</button><button class="m" data-suika="big" data-d="-1">-1</button></div>
+      </div>
+    </div>
+
+    <div class="lamp-sec-title">設定除外</div>
+    <div class="excl-grid" id="exclGrid"></div>
+
+    <button class="btn-reset" id="resetBtn">リセット</button>
+    <div class="saved-note" id="savedNote">入力は自動保存されます</div>
+  </div>
+</div>
+</div>
 
 <script src="calc.js"></script>
 <script>
@@ -263,7 +388,6 @@
   const $ = id => document.getElementById(id);
   const LS_KEY = 'hanahana-v30-state-v1';
 
-  // ---------- 状態 ----------
   const state = {
     startG: '', currentG: '', totalG: '',
     big: 0, reg: 0, bell: '',
@@ -272,90 +396,25 @@
       side:     { blue:0, yellow:0, green:0, red:0, rainbow:0 },
       regSuika: 0, bigSuika: 0
     },
-    excluded: {}   // settingKey -> true
+    excluded: {}
   };
 
-  const COUNTERS = [
-    { key:'big',  label:'BIG回数',   el:'counterBig'  },
-    { key:'reg',  label:'REG回数',   el:'counterReg'  },
-    { key:'bell', label:'ベル回数',  el:'counterBell' }
-  ];
   const HIBISCUS_COLORS = ['white','blue','yellow','green','purple','rainbow'];
   const SIDE_COLORS = ['blue','yellow','green','red','rainbow'];
-
   const NEON = ['#4dffb8','#35e0c8','#7c6cff','#ff8a5c','#ff5470','#ffd166','#f368e0','#7cc7ff'];
 
-  // ---------- DOM生成 ----------
-  function buildCounters() {
-    for (const c of COUNTERS) {
-      const wrap = $(c.el);
-      wrap.innerHTML =
-        '<div class="val-wrap"><div class="name">' + c.label + '</div>' +
-        '<input type="number" id="num_' + c.key + '" inputmode="numeric" min="0" value="' + (state[c.key] === '' ? '' : state[c.key]) + '"></div>' +
-        '<button class="minus" data-key="' + c.key + '" data-d="-1">−</button>' +
-        '<button data-key="' + c.key + '" data-d="1">＋</button>';
-      wrap.querySelectorAll('button').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const key = btn.dataset.key;
-          const cur = parseInt(state[key], 10) || 0;
-          state[key] = Math.max(0, cur + parseInt(btn.dataset.d, 10));
-          $('num_' + key).value = state[key];
-          update();
-        });
-      });
-      wrap.querySelector('input').addEventListener('input', e => {
-        const v = e.target.value;
-        state[c.key] = v === '' ? '' : Math.max(0, parseInt(v, 10) || 0);
-        update();
-      });
-    }
-  }
-
-  function buildLamps(gridId, colors, lampKey) {
-    const grid = $(gridId);
-    colors.forEach((color, i) => {
-      const meta = color === 'rainbow'
-        ? { label:'虹', css:'conic-gradient(#ff5470,#ffd166,#4dffb8,#35e0c8,#7c6cff,#f368e0,#ff5470)' }
-        : { label: colorLabel(color), css: colorHex(color) };
-      const btn = document.createElement('button');
-      btn.className = 'lamp-btn' + (state.lamps[lampKey][color] === 0 ? ' zero' : '');
-      btn.dataset.color = color;
-      btn.dataset.lamp = lampKey;
-      btn.innerHTML =
-        '<span class="cnt">' + state.lamps[lampKey][color] + '</span>' +
-        '<span class="dot" style="background:' + meta.css + ';color:' + meta.css + '"></span>' +
-        meta.label;
-      btn.addEventListener('click', () => {
-        state.lamps[lampKey][color] = Math.max(0, (state.lamps[lampKey][color] || 0) + 1);
-        btn.querySelector('.cnt').textContent = state.lamps[lampKey][color];
-        btn.classList.toggle('zero', state.lamps[lampKey][color] === 0);
-        update();
-      });
-      // 長押しで -1
-      let timer = null;
-      btn.addEventListener('touchstart', () => {
-        timer = setTimeout(() => {
-          state.lamps[lampKey][color] = Math.max(0, (state.lamps[lampKey][color] || 0) - 1);
-          btn.querySelector('.cnt').textContent = state.lamps[lampKey][color];
-          btn.classList.toggle('zero', state.lamps[lampKey][color] === 0);
-          update();
-        }, 600);
-      });
-      btn.addEventListener('touchend', () => clearTimeout(timer));
-      btn.addEventListener('touchcancel', () => clearTimeout(timer));
-      btn.addEventListener('mousedown', () => {
-        timer = setTimeout(() => {
-          state.lamps[lampKey][color] = Math.max(0, (state.lamps[lampKey][color] || 0) - 1);
-          btn.querySelector('.cnt').textContent = state.lamps[lampKey][color];
-          btn.classList.toggle('zero', state.lamps[lampKey][color] === 0);
-          update();
-        }, 600);
-      });
-      btn.addEventListener('mouseup', () => clearTimeout(timer));
-      btn.addEventListener('mouseleave', () => clearTimeout(timer));
-      grid.appendChild(btn);
-    });
-  }
+  // トップランプ: 虹 紫 赤 緑 黄 青 白（ハイビスカス色と連動）
+  const TOP_LAMPS = [
+    { key:'rainbow', color:'#ff5ad0' },
+    { key:'purple',  color:'#b57bff' },
+    { key:'red',     color:'#ff3b5c' },
+    { key:'green',   color:'#4dffb8' },
+    { key:'yellow',  color:'#ffd166' },
+    { key:'blue',    color:'#35e0c8' },
+    { key:'white',   color:'#e8edf7' }
+  ];
+  // ハイビスカスカウントキー → トップランプキー（redは虹に近い赤として赤ランプへ）
+  const HIB_TO_TOP = { white:'white', blue:'blue', yellow:'yellow', green:'green', purple:'purple', rainbow:'rainbow' };
 
   function colorLabel(c) {
     return { white:'白', blue:'青', yellow:'黄', green:'緑', purple:'紫', red:'赤' }[c] || c;
@@ -366,51 +425,132 @@
       purple:'#b57bff', red:'#ff5470', rainbow:'#888'
     }[c] || '#888';
   }
+  function lampCss(color) {
+    return color === 'rainbow'
+      ? 'conic-gradient(#ff5470,#ffd166,#4dffb8,#35e0c8,#7c6cff,#f368e0,#ff5470)'
+      : colorHex(color);
+  }
 
-  function buildSettingRows() {
-    const wrap = $('settingRows');
+  // ---------- トップランプ生成 ----------
+  function buildTopLamps() {
+    const strip = $('lampStrip');
+    TOP_LAMPS.forEach(l => {
+      const d = document.createElement('div');
+      d.className = 'lamp';
+      d.id = 'toplamp_' + l.key;
+      d.style.color = l.color;
+      strip.appendChild(d);
+    });
+  }
+  function syncTopLamps() {
+    TOP_LAMPS.forEach(l => {
+      const el = $('toplamp_' + l.key);
+      if (!el) return;
+      const cnt = (state.lamps.hibiscus[l.key] || 0);
+      el.classList.toggle('on', cnt > 0);
+    });
+  }
+
+  // ---------- 色別ランプカウントボタン ----------
+  function buildLamps(gridId, colors, lampKey) {
+    const grid = $(gridId);
+    colors.forEach(color => {
+      const btn = document.createElement('button');
+      btn.className = 'lamp-btn' + (state.lamps[lampKey][color] === 0 ? ' zero' : '');
+      btn.dataset.color = color;
+      btn.dataset.lamp = lampKey;
+      btn.innerHTML =
+        '<span class="cnt">' + state.lamps[lampKey][color] + '</span>' +
+        '<span class="dot" style="background:' + lampCss(color) + ';color:' + lampCss(color) + '"></span>' +
+        colorLabel(color);
+      const bump = delta => {
+        state.lamps[lampKey][color] = Math.max(0, (state.lamps[lampKey][color] || 0) + delta);
+        btn.querySelector('.cnt').textContent = state.lamps[lampKey][color];
+        btn.classList.toggle('zero', state.lamps[lampKey][color] === 0);
+        update();
+      };
+      btn.addEventListener('click', () => bump(1));
+      // 長押しで-1
+      let timer = null;
+      const start = () => { timer = setTimeout(() => { bump(-1); timer = 'repeat'; }, 550); };
+      const stop = () => {
+        if (timer && timer !== 'repeat') clearTimeout(timer);
+        else if (timer === 'repeat') { /* 長押し中の連続減算は省略 */ }
+        timer = null;
+      };
+      btn.addEventListener('touchstart', start);
+      btn.addEventListener('touchend', stop);
+      btn.addEventListener('touchcancel', stop);
+      btn.addEventListener('mousedown', start);
+      btn.addEventListener('mouseup', stop);
+      btn.addEventListener('mouseleave', stop);
+      grid.appendChild(btn);
+    });
+  }
+
+  // ---------- 設定行（液晶内バー）＋除外チップ ----------
+  function buildSettings() {
+    const rows = $('settingRows');
+    const chips = $('exclGrid');
     HanahanaCalc.SETTING_ORDER.forEach((key, i) => {
       const s = HanahanaCalc.HANAHANA_SETTINGS[key];
       const row = document.createElement('div');
       row.className = 'set-row' + (state.excluded[key] ? ' excluded' : '');
       row.innerHTML =
-        '<input type="checkbox" id="ex_' + key + '"' + (state.excluded[key] ? ' checked' : '') + '>' +
-        '<label class="sname" for="ex_' + key + '">' + s.name + '</label>' +
-        '<div class="bar-wrap"><div class="bar-fill" id="bar_' + key + '" style="background:' + NEON[i % NEON.length] + '"></div></div>' +
-        '<div class="set-pct" id="pct_' + key + '">0.0%</div>';
-      $('ex_' + key).addEventListener('change', e => {
-        state.excluded[key] = e.target.checked;
-        row.classList.toggle('excluded', e.target.checked);
+        '<span class="sname">' + s.name + '</span>' +
+        '<div class="bar-wrap"><div class="bar-fill" id="bar_' + key + '" style="background:' + NEON[i % NEON.length] + '"></div></div>';
+      rows.appendChild(row);
+
+      const chip = document.createElement('button');
+      chip.className = 'excl-chip' + (state.excluded[key] ? ' on' : '');
+      chip.textContent = s.name;
+      chip.addEventListener('click', () => {
+        state.excluded[key] = !state.excluded[key];
+        chip.classList.toggle('on', state.excluded[key]);
+        row.classList.toggle('excluded', state.excluded[key]);
         update();
       });
-      wrap.appendChild(row);
+      chips.appendChild(chip);
     });
   }
 
-  // ---------- 入力イベント ----------
-  function bindBasicInputs() {
-    const bind = (id, key) => {
-      $(id).addEventListener('input', e => {
-        state[key] = e.target.value;
-        update();
-      });
-    };
-    bind('startG', 'startG');
-    bind('currentG', 'currentG');
-    bind('totalG', 'totalG');
-  }
+  // ---------- カウンタ入力 ----------
+  document.querySelectorAll('.count-box .step button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.key;
+      const cur = state[key] === '' ? 0 : (parseInt(state[key], 10) || 0);
+      state[key] = Math.max(0, cur + parseInt(btn.dataset.d, 10));
+      $('num_' + key).value = state[key] === '' ? 0 : state[key];
+      update();
+    });
+  });
+  ['big','reg','bell'].forEach(key => {
+    $('num_' + key).addEventListener('input', e => {
+      const v = e.target.value;
+      state[key] = v === '' ? '' : Math.max(0, parseInt(v, 10) || 0);
+      update();
+    });
+  });
+  ['startG','currentG','totalG'].forEach(key => {
+    $(key).addEventListener('input', e => { state[key] = e.target.value; update(); });
+  });
+
+  // ---------- スイカ ----------
+  document.querySelectorAll('[data-suika]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const which = btn.dataset.suika === 'reg' ? 'regSuika' : 'bigSuika';
+      state.lamps[which] = Math.max(0, (state.lamps[which] || 0) + parseInt(btn.dataset.d, 10));
+      update();
+    });
+  });
 
   // ---------- 計算・描画 ----------
   function getTotalGames() {
-    // totalG 直接入力があれば優先、なければ currentG - startG
-    if (state.totalG !== '' && !isNaN(parseInt(state.totalG, 10))) {
-      return parseInt(state.totalG, 10);
-    }
+    if (state.totalG !== '' && !isNaN(parseInt(state.totalG, 10))) return parseInt(state.totalG, 10);
     const s = parseInt(state.startG, 10) || 0;
     const c = parseInt(state.currentG, 10) || 0;
     return Math.max(0, c - s);
   }
-
   function observedFreq(total, count) {
     if (!total || total <= 0) return null;
     return total / Math.max(0, count);
@@ -418,26 +558,23 @@
 
   function update() {
     const total = getTotalGames();
+    $('lcdTotalG').textContent = total.toLocaleString();
     $('totalGNote').textContent = (state.totalG === '' && total > 0) ? '（総G=' + total + '）' : '';
 
-    // 現在の実戦確率
     const probs = [
-      ['BIG', 'big', observedFreq(total, state.big|0)],
-      ['REG', 'reg', observedFreq(total, state.reg|0)],
-      ['合算', 'comb', observedFreq(total, (state.big|0) + (state.reg|0))],
-      ['ベル', 'bell', state.bell === '' ? null : observedFreq(total, state.bell|0)]
+      ['BIG', observedFreq(total, state.big|0)],
+      ['REG', observedFreq(total, state.reg|0)],
+      ['合算', observedFreq(total, (state.big|0) + (state.reg|0))],
+      ['ベル', state.bell === '' ? null : observedFreq(total, state.bell|0)]
     ];
-    $('probGrid').innerHTML = probs.map(([name, , f]) =>
+    $('probGrid').innerHTML = probs.map(([name, f]) =>
       '<div class="prob-item"><div class="p-name">' + name + '</div>' +
-      '<div class="p-val">' + (f ? '1/' + f.toFixed(1) : '—') + '</div>' +
-      '<div class="p-obs">' + (f ? '' : 'データ不足') + '</div></div>'
+      '<div class="p-val">' + (f ? '1/' + f.toFixed(1) : '—') + '</div></div>'
     ).join('');
 
-    // スイカ数値表示
     $('regSuikaNum').textContent = state.lamps.regSuika;
     $('bigSuikaNum').textContent = state.lamps.bigSuika;
 
-    // 設定判別（ソフトマックス）
     const excluded = HanahanaCalc.SETTING_ORDER.filter(k => state.excluded[k]);
     const calcState = {
       totalG: total,
@@ -452,18 +589,15 @@
       const p = probabilities[key] || 0;
       const pct = (p * 100).toFixed(1);
       const bar = $('bar_' + key);
-      const pctEl = $('pct_' + key);
       if (bar) {
         bar.style.width = pct + '%';
         bar.dataset.pct = pct + '%';
         bar.classList.toggle('dim', state.excluded[key]);
         bar.style.background = NEON[i % NEON.length];
       }
-      if (pctEl) {
-        pctEl.textContent = pct + '%';
-        pctEl.style.color = state.excluded[key] ? 'var(--sub)' : 'var(--text)';
-      }
     });
+
+    syncTopLamps();
     save();
   }
 
@@ -472,20 +606,14 @@
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(state));
       $('savedNote').textContent = '自動保存済み ' + new Date().toLocaleTimeString('ja-JP', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    } catch (e) { /* ignore */ }
+    } catch (e) {}
   }
-
   function restore() {
     try {
       const raw = localStorage.getItem(LS_KEY);
       if (!raw) return;
       const d = JSON.parse(raw);
-      if (d.startG !== undefined) state.startG = d.startG;
-      if (d.currentG !== undefined) state.currentG = d.currentG;
-      if (d.totalG !== undefined) state.totalG = d.totalG;
-      if (d.big !== undefined) state.big = d.big;
-      if (d.reg !== undefined) state.reg = d.reg;
-      if (d.bell !== undefined) state.bell = d.bell;
+      ['startG','currentG','totalG','big','reg','bell'].forEach(k => { if (d[k] !== undefined) state[k] = d[k]; });
       if (d.lamps) {
         Object.assign(state.lamps.hibiscus, d.lamps.hibiscus || {});
         Object.assign(state.lamps.side, d.lamps.side || {});
@@ -493,34 +621,21 @@
         state.lamps.bigSuika = d.lamps.bigSuika || 0;
       }
       if (d.excluded) state.excluded = d.excluded;
-    } catch (e) { /* ignore */ }
+    } catch (e) {}
   }
 
-  // ---------- リセット ----------
   $('resetBtn').addEventListener('click', () => {
     if (!confirm('全データをリセットしますか？\n（localStorageも消去されます）')) return;
     localStorage.removeItem(LS_KEY);
     location.reload();
   });
 
-  // ---------- スイカボタン ----------
-  document.querySelectorAll('[data-suika]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const which = btn.dataset.suika === 'reg' ? 'regSuika' : 'bigSuika';
-      const d = parseInt(btn.dataset.d, 10);
-      state.lamps[which] = Math.max(0, (state.lamps[which] || 0) + d);
-      update();
-    });
-  });
-
   // ---------- 初期化 ----------
-  buildCounters();
+  buildTopLamps();
   buildLamps('hibiscusGrid', HIBISCUS_COLORS, 'hibiscus');
   buildLamps('sideGrid', SIDE_COLORS, 'side');
-  buildSettingRows();
-  bindBasicInputs();
+  buildSettings();
   restore();
-  // 復元後に入力欄へ反映
   $('startG').value = state.startG;
   $('currentG').value = state.currentG;
   $('totalG').value = state.totalG;
