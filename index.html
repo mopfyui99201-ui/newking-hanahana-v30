@@ -402,6 +402,43 @@
   .hist-item .h-sub { color:var(--sub); font-variant-numeric:tabular-nums; }
   .hist-item .h-pct { color:var(--neon); font-weight:800; }
   .hist-empty { text-align:center; color:var(--sub); font-size:.75rem; padding:20px 0; }
+
+  /* 2大指標（設定4・V合算 / 設定V単体） */
+  .key-metrics { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin: 4px 0 10px; }
+  .km-box {
+    background:rgba(20,35,60,.55); border:1px solid #2a4a7a; border-radius:10px;
+    padding:9px 6px; text-align:center;
+  }
+  .km-box .km-name { font-size:.58rem; color:#8fb0d8; letter-spacing:.08em; font-weight:700; }
+  .km-box .km-val { font-size:1.45rem; font-weight:900; font-variant-numeric:tabular-nums; color:#ffe9a3;
+    text-shadow:0 0 10px rgba(255,233,163,.5); line-height:1.2; }
+  .km-box.hot .km-val { color:#ff8a5c; text-shadow:0 0 12px rgba(255,138,92,.6); }
+  .km-box.vhot .km-val { color:#ff5ad0; text-shadow:0 0 12px rgba(255,90,208,.6); }
+
+  /* 実戦判定バナー */
+  .judge-banner {
+    text-align:center; margin: 0 0 10px; padding: 9px 10px; border-radius: 9px;
+    font-size: .85rem; font-weight: 900; letter-spacing: .06em;
+    border: 1px solid #22314f; background: rgba(15,25,45,.6); color: #7c93b8;
+    transition: all .3s;
+  }
+  .judge-banner.j-v { color:#fff; background:linear-gradient(90deg,#ff5ad0,#c8161e); border-color:#ff5ad0;
+    box-shadow:0 0 16px rgba(255,90,208,.55); animation: stopBlink .9s step-end infinite; }
+  .judge-banner.j-hi { color:#241a02; background:linear-gradient(90deg,#ffd166,#ff8a5c); border-color:#ffd166;
+    box-shadow:0 0 14px rgba(255,209,102,.45); }
+  .judge-banner.j-lo { color:#fff; background:linear-gradient(90deg,#3a4458,#1a2030); border-color:#4a5a75; }
+  .judge-banner small { display:block; font-size:.58rem; font-weight:700; letter-spacing:.05em; opacity:.8; margin-top:2px; }
+
+  /* 機械割行 */
+  .payout-line { text-align:center; font-size:.66rem; color:#7c93b8; margin: 0 0 8px; font-variant-numeric:tabular-nums; }
+  .payout-line b { color:#dff3ff; }
+  .payout-line .over { color:var(--neon); font-weight:800; }
+  .payout-line .under { color:#ff8a95; font-weight:800; }
+
+  /* 設定行の理論機械割 */
+  .sname { display:flex; flex-direction:column; line-height:1.15; }
+  .sname small { font-size:.52rem; color:#5f7ba6; font-weight:400; }
+  .set-row .sname { flex:0 0 50px; font-size:.72rem; font-weight:700; color:var(--txt); }
 </style>
 </head>
 <body>
@@ -452,6 +489,12 @@
         <div class="lcd-total"><span id="lcdTotalG">0</span><small>総G</small></div>
         <div class="verdict" id="verdictBadge">データ不足</div>
         <div class="prob-grid" id="probGrid"></div>
+        <div class="payout-line" id="payoutLine"></div>
+        <div class="key-metrics">
+          <div class="km-box" id="kmHi"><div class="km-name">設定4・V 合算期待度</div><div class="km-val" id="kmHiVal">—</div></div>
+          <div class="km-box vhot" id="kmV"><div class="km-name">設定V 単体期待度</div><div class="km-val" id="kmVVal">—</div></div>
+        </div>
+        <div class="judge-banner" id="judgeBanner">データを入力してください</div>
         <div class="set-head">
           <span class="t">設定期待度</span>
           <span class="h">タップで除外 / 下部パネルでも可</span>
@@ -543,6 +586,10 @@
         <span class="fname">差枚数(枚)</span>
         <input type="number" id="diffCount" inputmode="numeric" placeholder="例: +1200">
       </div>
+      <div class="field-row">
+        <span class="fname">投入枚数(枚)</span>
+        <input type="number" id="inputMedals" inputmode="numeric" min="0" placeholder="機械割計算用（任意）">
+      </div>
     </div>
     <div id="diffInvest" style="display:none">
       <div class="field-row">
@@ -574,6 +621,9 @@
 
     <div class="lamp-sec-title">設定除外</div>
     <div class="excl-grid" id="exclGrid"></div>
+    <div class="excl-grid" style="margin-top:6px;">
+      <button class="excl-chip on" id="autoExChip">自動除外: ON（REG虹/色で自動除外）</button>
+    </div>
 
     <div class="lamp-sec-title">本日の実戦履歴</div>
     <div class="field-row">
@@ -627,6 +677,8 @@
     bizMode: 'normal',  // 営業モード: normal / event / flat
     histTable: '',      // 台番号（履歴用）
     histMemo: '',       // メモ（履歴用）
+    autoExEnabled: true,// REG終了時ランプによる自動除外のON/OFF
+    inputMedals: '',    // 投入枚数（機械割計算用・直接モード）
     lamps: {
       hibiscusBig: { white:0, blue:0, yellow:0, green:0, purple:0, rainbow:0 },
       hibiscusReg: { white:0, blue:0, yellow:0, green:0, purple:0, rainbow:0 },
@@ -891,8 +943,9 @@
       const s = HanahanaCalc.HANAHANA_SETTINGS[key];
       const row = document.createElement('div');
       row.className = 'set-row' + (state.excluded[key] ? ' excluded' : '');
+      const theory = HanahanaCalc.THEORETICAL_PAYOUT[key];
       row.innerHTML =
-        '<span class="sname">' + s.name + '</span>' +
+        '<span class="sname">' + s.name + '<small>理論 ' + theory.toFixed(1) + '%</small></span>' +
         '<div class="bar-wrap"><div class="bar-fill" id="bar_' + key + '" style="background:' + NEON[i % NEON.length] + '"></div></div>' +
         '<span class="bar-pct" id="pct_' + key + '">0.0%</span>';
       rows.appendChild(row);
@@ -1011,13 +1064,43 @@
   });
   $('investYen').addEventListener('input', e => { state.investYen = e.target.value; updateInvestResult(); updateDiffResult(); save(); });
   $('medals').addEventListener('input', e => { state.medals = e.target.value; updateInvestResult(); updateDiffResult(); save(); });
+  $('inputMedals').addEventListener('input', e => { state.inputMedals = e.target.value; update(); save(); });
 
-  // ---------- ベル確率 逆算補助（差枚数） ----------
-  // 最新実戦平均獲得枚数: BIG 1回=312枚 / REG 1回=130枚
-  const BIG_PAYOUT = 312, REG_PAYOUT = 130;
+  // 自動除外トグル（REG終了時ランプによる自動除外の手動解除/復帰）
+  $('autoExChip').addEventListener('click', () => {
+    state.autoExEnabled = !state.autoExEnabled;
+    $('autoExChip').classList.toggle('on', state.autoExEnabled);
+    $('autoExChip').textContent = state.autoExEnabled ? '自動除外: ON（REG虹/色で自動除外）' : '自動除外: OFF（手動のみ）';
+    sfxTap(true);
+    update();
+  });
+
+  // ---------- ベル確率 逆算補助（差枚数・補正済みアルゴリズム） ----------
+  // 【調整可能な解析定数】最新実戦値
+  const BELLMODEL = {
+    BIG_PAYOUT: 312,        // BIG純増獲得枚数
+    REG_PAYOUT: 130,        // REG純増獲得枚数
+    REPLAY_DENOM: 7.3,      // 通常時リプレイ確率の分母
+    REPLAY_PAYOUT: 5,       // リプレイ1回あたりの払い出し枚数（目安）
+    OTHER_PER_GAME: 0.8     // チェリー/スイカ/その他小役の平均払い出し（枚/G・目安）
+  };
+  // 投入枚数（機械割・差枚計算の共通ソース）
+  function investMedalsCount() {
+    if (state.diffMode === 'invest') return numOf(state.investYen) * 10 * state.lendMode;
+    return numOf(state.inputMedals);
+  }
+  // ベル推定の内訳を計算して返す
+  function bellBreakdown(diff, d) {
+    const bonusGain = numOf(d.big) * BELLMODEL.BIG_PAYOUT + numOf(d.reg) * BELLMODEL.REG_PAYOUT;
+    const replayGain = (d.totalG / BELLMODEL.REPLAY_DENOM) * BELLMODEL.REPLAY_PAYOUT;
+    const otherGain = d.totalG * BELLMODEL.OTHER_PER_GAME;
+    const bellMedals = diff - bonusGain - replayGain - otherGain;
+    const payout = Math.max(1, numOf($('bellPayout').value) || 6);
+    const estBell = bellMedals > 0 ? bellMedals / payout : 0;
+    return { bonusGain, replayGain, otherGain, bellMedals, estBell, payout };
+  }
   function updateDiffResult() {
     const diff = effectiveDiff();
-    const payout = Math.max(1, numOf($('bellPayout').value) || 6);
     const d = activeData();
     const el = $('diffResult');
     if (state.diffMode === 'invest' && state.investYen === '' && state.medals === '') {
@@ -1029,26 +1112,26 @@
     if (diff === 0) { el.innerHTML = '差枚数が0です'; return; }
     if (diff < 0) { el.innerHTML = '差枚数がマイナス（' + diff.toLocaleString() + '枚）です'; return; }
     if (d.totalG <= 0) { el.innerHTML = '総ゲーム数が不足しています'; return; }
-    const bonusGain = numOf(d.big) * BIG_PAYOUT + numOf(d.reg) * REG_PAYOUT;
-    const bellMedals = diff - bonusGain;
-    if (bellMedals <= 0) {
-      el.innerHTML = 'ボーナス獲得分(BIG×312+REG×130=' + bonusGain + '枚)で差枚数を超過。ベル推定不可';
+    const b = bellBreakdown(diff, d);
+    if (b.bellMedals <= 0) {
+      el.innerHTML = '補正項目（ボーナス' + Math.round(b.bonusGain) + '枚＋リプレイ' + Math.round(b.replayGain) +
+        '枚＋小役' + Math.round(b.otherGain) + '枚）で差枚数を超過。ベル推定不可';
       return;
     }
-    const estBell = bellMedals / payout;
-    const denom = d.totalG / estBell;
-    el.innerHTML = 'ボーナス獲得 ' + bonusGain + '枚を除いたベル推定 <b>' + estBell.toFixed(1) + '回</b> → ベル <b>1/' + denom.toFixed(1) + '</b>';
+    const denom = d.totalG / b.estBell;
+    el.innerHTML = '差枚 ' + diff.toLocaleString() + '枚 − ボーナス' + Math.round(b.bonusGain) +
+      ' − リプレイ' + Math.round(b.replayGain) + ' − 小役' + Math.round(b.otherGain) +
+      ' = ベル推定 <b>' + b.estBell.toFixed(1) + '回</b> → ベル <b>1/' + denom.toFixed(2) + '</b>';
   }
   $('diffCount').addEventListener('input', () => { state.diffCount = $('diffCount').value; updateDiffResult(); save(); });
   $('bellPayout').addEventListener('input', () => { state.bellPayout = $('bellPayout').value; updateDiffResult(); save(); });
   $('applyBell').addEventListener('click', () => {
     const diff = effectiveDiff();
-    const payout = Math.max(1, numOf($('bellPayout').value) || 6);
     const d = activeData();
     if (diff <= 0 || d.totalG <= 0) { updateDiffResult(); return; }
-    const bellMedals = diff - (numOf(d.big) * BIG_PAYOUT + numOf(d.reg) * REG_PAYOUT);
-    if (bellMedals <= 0) { updateDiffResult(); return; }
-    const est = Math.max(0, Math.round(bellMedals / payout));
+    const b = bellBreakdown(diff, d);
+    if (b.bellMedals <= 0) { updateDiffResult(); return; }
+    const est = Math.max(0, Math.round(b.estBell));
     if (state.activeTab === 'both') {
       state.tabs.self.bell = est; // 合算時は自分側に反映
     } else {
@@ -1098,7 +1181,7 @@
     const excluded = HanahanaCalc.SETTING_ORDER.filter(k => state.excluded[k]);
     const { probabilities } = HanahanaCalc.calculateHanahanaProbabilities(
       { totalG: d.totalG, big: d.big, reg: d.reg, bell: d.bell, lamps: state.lamps },
-      { excluded, bizMode: state.bizMode });
+      { excluded, bizMode: state.bizMode, autoEx: state.autoExEnabled });
     let topKey = HanahanaCalc.SETTING_ORDER[0], topP = 0;
     HanahanaCalc.SETTING_ORDER.forEach(k => {
       if ((probabilities[k] || 0) > topP) { topP = probabilities[k] || 0; topKey = k; }
@@ -1168,7 +1251,7 @@
         const reg = kind === 'reg' ? base + b : d.reg;
         const r = HanahanaCalc.calculateHanahanaProbabilities(
           { totalG: d.totalG, big, reg, bell: d.bell, lamps: state.lamps },
-          { excluded, bizMode: state.bizMode });
+          { excluded, bizMode: state.bizMode, autoEx: state.autoExEnabled });
         const p = target(r);
         if (p >= 0.5) {
           if (!best || b < best.b) best = { kind, b, p };
@@ -1212,7 +1295,7 @@
       lamps: state.lamps
     };
     const { probabilities, autoExcluded, confidence } = HanahanaCalc.calculateHanahanaProbabilities(calcState, {
-      excluded, bizMode: state.bizMode
+      excluded, bizMode: state.bizMode, autoEx: state.autoExEnabled
     });
 
     HanahanaCalc.SETTING_ORDER.forEach((key, i) => {
@@ -1240,6 +1323,47 @@
 
     // ナビ目安: 設定4・V合算50%到達までの必要ボーナス数
     $('navHint').innerHTML = computeNavHint(d, probabilities);
+
+    // 実戦機械割: 獲得枚数 = 投入枚数 + 差枚数 → 機械割 = 獲得/投入
+    const investN = investMedalsCount();
+    const diffN = effectiveDiff();
+    const pl = $('payoutLine');
+    if (investN > 0) {
+      const gain = investN + diffN;
+      const rate = gain / investN * 100;
+      pl.innerHTML = '実戦機械割 <b class="' + (rate >= 100 ? 'over' : 'under') + '">' + rate.toFixed(1) +
+        '%</b>（投入 ' + investN.toLocaleString() + '枚 → 獲得 ' + gain.toLocaleString() + '枚）';
+    } else {
+      pl.innerHTML = '投入枚数を入力すると実戦機械割を表示します';
+    }
+
+    // 2大指標: 設定4・V合算 / 設定V単体
+    const pHi = (probabilities.setting4 || 0) + (probabilities.settingV || 0);
+    const pV = probabilities.settingV || 0;
+    $('kmHiVal').textContent = (pHi * 100).toFixed(1) + '%';
+    $('kmVVal').textContent = (pV * 100).toFixed(1) + '%';
+    $('kmHi').classList.toggle('hot', pHi >= 0.5);
+    $('kmV').classList.toggle('vhot', pV >= 0.3);
+
+    // 実戦判定バナー
+    const banner = $('judgeBanner');
+    const p12 = (probabilities.setting1 || 0) + (probabilities.setting2 || 0);
+    if (d.totalG <= 0 && d.big + d.reg === 0) {
+      banner.className = 'judge-banner';
+      banner.innerHTML = 'データを入力してください';
+    } else if (pV >= 0.35 || (pHi >= 0.7 && pV >= 0.22)) {
+      banner.className = 'judge-banner j-v';
+      banner.innerHTML = '🔥 設定V濃厚・全ツッパ推奨<small>設定V ' + (pV * 100).toFixed(1) + '% ／ 信頼度 ' + Math.round(confidence * 100) + '%</small>';
+    } else if (pHi >= 0.5) {
+      banner.className = 'judge-banner j-hi';
+      banner.innerHTML = '✨ 高設定期待・続行<small>設定4・V合算 ' + (pHi * 100).toFixed(1) + '% ／ 信頼度 ' + Math.round(confidence * 100) + '%</small>';
+    } else if (p12 >= 0.6) {
+      banner.className = 'judge-banner j-lo';
+      banner.innerHTML = '⚠️ 低設定濃厚・ヤメ時注意<small>設定1・2合算 ' + (p12 * 100).toFixed(1) + '%</small>';
+    } else {
+      banner.className = 'judge-banner';
+      banner.innerHTML = '▶ 判定保留（データ蓄積中）<small>設定4・V合算 ' + (pHi * 100).toFixed(1) + '% ／ 信頼度 ' + Math.round(confidence * 100) + '%</small>';
+    }
 
     // 判定バッジ: 最高期待度の設定から 続行推奨/様子見/ヤメ時注意 を判定
     const badge = $('verdictBadge');
@@ -1297,7 +1421,7 @@
       if (d.bizMode) state.bizMode = d.bizMode;
       if (d.diffCount !== undefined) state.diffCount = d.diffCount;
       if (d.bellPayout !== undefined) state.bellPayout = d.bellPayout;
-      ['diffMode','investYen','medals','lendMode','histTable','histMemo'].forEach(k => {
+      ['diffMode','investYen','medals','lendMode','histTable','histMemo','autoExEnabled','inputMedals'].forEach(k => {
         if (d[k] !== undefined) state[k] = d[k];
       });
       if (d.lamps) {
@@ -1336,8 +1460,11 @@
   $('bellPayout').value = state.bellPayout;
   $('investYen').value = state.investYen;
   $('medals').value = state.medals;
+  $('inputMedals').value = state.inputMedals;
   $('histTable').value = state.histTable;
   $('histMemo').value = state.histMemo;
+  $('autoExChip').classList.toggle('on', state.autoExEnabled !== false);
+  $('autoExChip').textContent = state.autoExEnabled !== false ? '自動除外: ON（REG虹/色で自動除外）' : '自動除外: OFF（手動のみ）';
   // 差枚数モード・貸出単価UIを復元
   document.querySelectorAll('#diffModeBar .tab').forEach(b => b.classList.toggle('on', b.dataset.dm === state.diffMode));
   $('diffDirect').style.display = state.diffMode === 'direct' ? '' : 'none';

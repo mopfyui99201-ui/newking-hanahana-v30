@@ -77,6 +77,11 @@ const BIG_SUIKA_LOGW = {
   setting1: 0.04, setting2: 0.00, setting3: -0.04, setting4: -0.08, settingV: -0.12
 };
 
+// 各設定の理論機械割（%・解析目安値。実機値に合わせて調整）
+const THEORETICAL_PAYOUT = {
+  setting1: 97.0, setting2: 98.0, setting3: 100.0, setting4: 103.0, settingV: 112.0
+};
+
 // ホール営業モード別の事前確率（合計1に正規化済み）
 const BIZ_PRIORS = {
   normal: { // 通常営業: 低設定ベース
@@ -145,12 +150,16 @@ for (const key of SETTING_ORDER) {
  *     regSuika, bigSuika, retroFlash, retroSound
  *   }
  * }
- * options: { excluded: [keys], bizMode: 'normal'|'event'|'flat' }
+ * options: {
+ *   excluded: [keys],
+ *   bizMode: 'normal'|'event'|'flat',
+ *   autoEx: true|false   // false で自動除外（設定1/1.5→設定1、虹→1,2,3）を無効化
+ * }
  * 戻り値: { probabilities, logLikelihoods, autoExcluded, confidence }
  *   probabilities は信頼度スムージング適用後・合計100%
  * ============================================================ */
 function calculateHanahanaProbabilities(state, options) {
-  const opts = Object.assign({ excluded: [], bizMode: 'normal' }, options || {});
+  const opts = Object.assign({ excluded: [], bizMode: 'normal', autoEx: true }, options || {});
   const w = HANAHANA_WEIGHTS;
   const lamps = (state && state.lamps) || {};
 
@@ -173,12 +182,18 @@ function calculateHanahanaProbabilities(state, options) {
     sideCat[SIDE_LAMP_CAT_OF[color]] += Math.max(0, side[color] || 0);
   }
 
-  // REG終了時ハイビスカス: 白以外が1回でもあれば設定1をハード除外（設定2以上濃厚法則）
+  // REG終了時ハイビスカスによる自動除外（設定2以上濃厚法則）
+  //  - 白以外(青以上)が1回でも → 設定1を除外
+  //  - 虹が1回でも           → 設定1・2・3を除外（設定4・Vのみで再計算）
   const hibReg = lamps.hibiscusReg || {};
   const nonWhiteReg = ['blue','yellow','green','purple','rainbow']
     .some(c => (hibReg[c] || 0) > 0);
+  const rainbowReg = (hibReg.rainbow || 0) > 0;
   const hardExcluded = new Set(opts.excluded || []);
-  if (nonWhiteReg) hardExcluded.add('setting1');
+  if (opts.autoEx !== false) {
+    if (nonWhiteReg) hardExcluded.add('setting1');
+    if (rainbowReg) ['setting1', 'setting2', 'setting3'].forEach(k => hardExcluded.add(k));
+  }
 
   const prior = BIZ_PRIORS[opts.bizMode] || BIZ_PRIORS.flat;
   const logLikelihoods = {};
@@ -267,7 +282,7 @@ function calculateHanahanaProbabilities(state, options) {
 const EXPORTS = {
   SETTING_ORDER, HANAHANA_BASE_SETTINGS, HANAHANA_SETTINGS,
   HANAHANA_WEIGHTS, BIZ_PRIORS, SIDE_LAMP_CAT, SIDE_LAMP_COLORS,
-  HIBISCUS_REG_LOGW, HIBISCUS_BIG_LOGW, BIG_SUIKA_LOGW,
+  HIBISCUS_REG_LOGW, HIBISCUS_BIG_LOGW, BIG_SUIKA_LOGW, THEORETICAL_PAYOUT,
   confidenceFor, lgamma, logBinomial, calculateHanahanaProbabilities
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = EXPORTS;
