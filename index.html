@@ -158,6 +158,34 @@
   }
   @keyframes lampPulse { from { opacity:.55; } to { opacity:1; } }
 
+  /* ===== 発光連動フラッシュ ===== */
+  .hibiscus-svg { cursor: pointer; }
+  .hibiscus-svg.flash {
+    filter: drop-shadow(0 0 10px var(--fc, #ff5ad0)) drop-shadow(0 0 28px var(--fc, #ff5ad0));
+    animation: hibFlash .7s ease-out;
+  }
+  @keyframes hibFlash {
+    0%   { transform: scale(1.32) rotate(-10deg); }
+    55%  { transform: scale(1.14) rotate(5deg); }
+    100% { transform: scale(1) rotate(0); }
+  }
+  .top-deck.deck-flash {
+    border-color: var(--fc, #ff5ad0);
+    box-shadow: 0 0 0 2px var(--fc, #ff5ad0), 0 0 26px var(--fc, #ff5ad0), inset 0 2px 8px rgba(0,0,0,.8);
+    transition: box-shadow .25s, border-color .25s;
+  }
+  .lamp.flash { box-shadow: 0 0 18px 4px currentColor; }
+  /* 全灯テスト: 虹色サイクル */
+  .lamp-strip.testing { animation: hueSpin .9s linear infinite; }
+  .lamp.test-on { box-shadow: 0 0 12px 3px #ff9ecf; border-color: #ff9ecf; }
+  .lamp.test-on::after {
+    content:''; position:absolute; inset:2px; border-radius:50%;
+    background: #ff9ecf; opacity:.9;
+    animation: lampPulse 1.1s ease-in-out infinite alternate;
+  }
+  .hibiscus-svg.testing { animation: hueSpin .9s linear infinite, hibFlash .7s ease-out; }
+  @keyframes hueSpin { to { filter: hue-rotate(360deg); } }
+
   /* ============ リール窓（液晶モニター） ============ */
   .mid-deck {
     position: relative;
@@ -956,13 +984,79 @@
       strip.appendChild(d);
     });
   }
+  // トップランプ点灯ソース: ハイビスカス(BIG終了時/REG終了時)＋サイドランプの合算
+  const TOP_LAMP_SRC = {
+    white:  ['hibiscusReg','hibiscusBig'],
+    blue:   ['hibiscusReg','hibiscusBig','side'],
+    yellow: ['hibiscusReg','hibiscusBig','side'],
+    green:  ['hibiscusReg','hibiscusBig','side'],
+    purple: ['hibiscusReg','hibiscusBig'],
+    red:    ['side'],
+    rainbow:['hibiscusReg','hibiscusBig','side']
+  };
   function syncTopLamps() {
+    const L = state.lamps;
     TOP_LAMPS.forEach(l => {
       const el = $('toplamp_' + l.key);
       if (!el) return;
-      const cnt = (state.lamps.hibiscusReg[l.key] || 0) + (state.lamps.hibiscusBig[l.key] || 0);
+      let cnt = 0;
+      (TOP_LAMP_SRC[l.key] || []).forEach(g => {
+        const o = L[g];
+        if (o) cnt += o[l.key] || 0;
+      });
       el.classList.toggle('on', cnt > 0);
     });
+  }
+
+  // 発光フラッシュ用の実色（虹は影が効くようソリッドピンクにフォールバック）
+  function flashCss(color) {
+    return color === 'rainbow' ? '#ff5ad0' : colorHex(color);
+  }
+  // ボタンタップ色でハイビスカス本体・筐体枠・対応トップランプをフラッシュ発光
+  function flashDeck(color) {
+    const css = flashCss(color);
+    const svg = document.querySelector('.hibiscus-svg');
+    const deck = document.querySelector('.top-deck');
+    const topKey = HIB_TO_TOP[color] || color;
+    const lampEl = $('toplamp_' + topKey);
+    if (svg) {
+      svg.style.setProperty('--fc', css);
+      svg.classList.remove('flash'); void svg.offsetWidth; svg.classList.add('flash');
+    }
+    if (deck) {
+      deck.style.setProperty('--fc', css);
+      deck.classList.remove('deck-flash'); void deck.offsetWidth; deck.classList.add('deck-flash');
+    }
+    if (lampEl) {
+      lampEl.classList.add('flash');
+      setTimeout(() => lampEl.classList.remove('flash'), 700);
+    }
+    setTimeout(() => {
+      if (svg) svg.classList.remove('flash');
+      if (deck) deck.classList.remove('deck-flash');
+    }, 750);
+  }
+
+  // ヘッダーハイビスカスタップ: 全7色ドット＋本体を虹色に一斉点灯する動作確認
+  function allLampTest() {
+    sfxChime(true);
+    const strip = $('lampStrip');
+    const svg = document.querySelector('.hibiscus-svg');
+    const deck = document.querySelector('.top-deck');
+    if (strip) strip.classList.add('testing');
+    TOP_LAMPS.forEach(l => {
+      const el = $('toplamp_' + l.key);
+      if (el) { el.classList.add('test-on', 'flash'); }
+    });
+    if (svg) { svg.style.setProperty('--fc', '#ff5ad0'); svg.classList.add('testing', 'flash'); }
+    if (deck) { deck.style.setProperty('--fc', '#ff5ad0'); deck.classList.add('deck-flash'); }
+    setTimeout(() => {
+      if (strip) strip.classList.remove('testing');
+      document.querySelectorAll('.lamp').forEach(el => el.classList.remove('test-on', 'flash'));
+      if (svg) svg.classList.remove('testing', 'flash');
+      if (deck) deck.classList.remove('deck-flash');
+      syncTopLamps(); // 実カウント状態へ復帰
+    }, 1500);
   }
 
   // ---------- 色別ランプカウントボタン ----------
@@ -981,10 +1075,11 @@
         state.lamps[lampKey][color] = Math.max(0, (state.lamps[lampKey][color] || 0) + delta);
         btn.querySelector('.cnt').textContent = state.lamps[lampKey][color];
         btn.classList.toggle('zero', state.lamps[lampKey][color] === 0);
-        // +1: 色に応じたチャイム（赤・紫・虹は豪華版）。-1: ソフトタップ
+        // +1: 色に応じたチャイム（赤・紫・虹は豪華版）＋本体/枠/ランプの発光フラッシュ。-1: ソフトタップ
         if (delta > 0) {
           const fancy = color === 'purple' || color === 'rainbow' || color === 'red';
           sfxChime(fancy);
+          flashDeck(color);
         } else {
           sfxTap(true);
         }
@@ -1558,6 +1653,7 @@
 
   // ---------- 初期化 ----------
   buildTopLamps();
+  document.querySelector('.hibiscus-svg').addEventListener('click', allLampTest);
   buildLamps('hibiscusBigGrid', HIBISCUS_COLORS, 'hibiscusBig');
   buildLamps('hibiscusRegGrid', HIBISCUS_COLORS, 'hibiscusReg');
   buildLamps('sideGrid', SIDE_COLORS, 'side');
