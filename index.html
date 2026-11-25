@@ -613,6 +613,53 @@
   .advisor-box .ad-item:last-child { border-bottom:none; }
   .advisor-box .ad-item b { color:var(--neon); }
   .advisor-box .ad-item .neg { color:#ff8a95; }
+
+  /* ===== AI相談チャットUI ===== */
+  .key-fields { display:flex; flex-direction:column; gap:7px; margin-top:8px; }
+  .key-fields input {
+    width:100%; box-sizing:border-box; background:#0a0b10;
+    border:1px solid #2c2c38; border-radius:10px; padding:9px 10px;
+    color:var(--txt); font-size:.72rem;
+  }
+  .key-fields input:focus { border-color: var(--gold-dk); outline:none; }
+  .key-status { font-size:.6rem; margin-top:6px; font-weight:700; }
+  .key-status.on { color:var(--neon); }
+  .key-status.off { color:var(--sub); }
+
+  .chat-list {
+    display:flex; flex-direction:column; gap:8px;
+    max-height:34vh; overflow-y:auto; padding:6px 2px 2px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .msg {
+    max-width:88%; padding:8px 11px; border-radius:13px;
+    font-size:.7rem; line-height:1.7; white-space:pre-wrap; word-break:break-word;
+  }
+  .msg.user {
+    align-self:flex-end; color:#eaf2ff;
+    background:linear-gradient(180deg,#35507a,#22384f);
+    border-bottom-right-radius:4px;
+  }
+  .msg.bot {
+    align-self:flex-start; color:#d8e2f2;
+    background:#141824; border:1px solid #2a3a5c;
+    border-bottom-left-radius:4px;
+  }
+  .msg.bot.err { border-color:rgba(255,84,112,.55); color:#ffb3c0; }
+  .msg.bot.typing { color:#8fb0d8; font-style:italic; }
+
+  .chat-input-row { display:flex; gap:7px; margin-top:9px; }
+  .chat-input-row input {
+    flex:1; min-width:0; background:#0a0b10; border:1px solid #2c2c38;
+    border-radius:10px; padding:10px; color:var(--txt); font-size:.78rem;
+  }
+  .chat-input-row input:focus { border-color: var(--gold-dk); outline:none; }
+  .chat-input-row button {
+    flex:0 0 auto; border:none; border-radius:10px; padding:0 16px;
+    background:linear-gradient(180deg,var(--gold-hi),var(--gold));
+    color:#241a02; font-weight:900; font-size:.78rem; cursor:pointer;
+  }
+  .chat-input-row button:active { transform:scale(.95); }
 </style>
 </head>
 <body>
@@ -879,18 +926,31 @@
 
 <!-- AI相談モーダル -->
 <div class="modal-overlay" id="aiModal" style="display:none;">
-  <div class="modal-box">
+  <div class="modal-box" style="max-width:440px;">
     <div class="modal-title">🤖 AIに今の台を相談する</div>
-    <div class="guide-sec">
-      <h4>現在の実戦データ（自動生成プロンプト）</h4>
-      <div class="ai-prompt-box" id="aiPrompt"></div>
-      <div class="ai-btn-row">
-        <a class="ai-link chatgpt" id="aiChatgpt" href="https://chatgpt.com/" target="_blank" rel="noopener">💬 ChatGPT で相談する</a>
-        <a class="ai-link gemini" id="aiGemini" href="https://gemini.google.com/" target="_blank" rel="noopener">✨ Gemini で相談する</a>
-        <button class="ai-link copy" id="aiCopy" type="button">📋 プロンプトをコピーだけする</button>
+
+    <details class="ai-guide" id="apiKeyBox">
+      <summary>🔑 自分のAPIキーを登録（任意・この端末のみに保存）</summary>
+      <div class="key-fields">
+        <input type="password" id="geminiKey" placeholder="Gemini APIキー（Google AI Studioで無料発行）" autocomplete="off">
+        <input type="password" id="openaiKey" placeholder="OpenAI APIキー（任意）" autocomplete="off">
+        <div class="key-status off" id="keyStatus">未登録：内蔵アドバイザー＋外部AIボタンで利用できます</div>
       </div>
-      <div class="ai-note">※ボタンを押すとプロンプトが自動コピーされます。AIアプリ/サイトを開いて貼り付けて相談してください。</div>
+    </details>
+
+    <div class="chat-list" id="chatList"></div>
+    <div class="chat-input-row">
+      <input type="text" id="chatInput" placeholder="例: この台ヤメるべき？設定Vっぽい？" enterkeyhint="send">
+      <button id="chatSend" type="button">送信</button>
     </div>
+
+    <div class="ai-btn-row">
+      <a class="ai-link chatgpt" id="aiChatgpt" href="https://chatgpt.com/" target="_blank" rel="noopener">🚀 ChatGPT でそのまま質問する</a>
+      <a class="ai-link gemini" id="aiGemini" href="https://gemini.google.com/" target="_blank" rel="noopener">✨ Gemini で相談する</a>
+      <button class="ai-link copy" id="aiCopy" type="button">📋 プロンプトをコピーだけする</button>
+    </div>
+    <div class="ai-note">※ChatGPT/Geminiボタンは質問文をURLに埋め込んで直接開きます（＋クリップボードにもコピー）。</div>
+
     <details class="ai-guide">
       <summary>ChatGPT / Gemini をお持ちでない方はこちら（無料・3ステップ）</summary>
       <ol>
@@ -2040,14 +2100,151 @@
     return items;
   }
 
+  // ---------- AI相談チャット ----------
+  const LS_GEMINI = 'hanahana-v30-gemini-key';
+  const LS_OPENAI = 'hanahana-v30-openai-key';
+
+  function pushChat(role, text, cls) {
+    const el = document.createElement('div');
+    el.className = 'msg ' + (cls || role);
+    el.textContent = text;
+    $('chatList').appendChild(el);
+    $('chatList').scrollTop = $('chatList').scrollHeight;
+    return el;
+  }
+
+  function activeApiKey() {
+    const g = (localStorage.getItem(LS_GEMINI) || '').trim();
+    const o = (localStorage.getItem(LS_OPENAI) || '').trim();
+    return g ? { provider: 'gemini', key: g } : (o ? { provider: 'openai', key: o } : null);
+  }
+  function refreshKeyStatus() {
+    const a = activeApiKey();
+    const el = $('keyStatus');
+    el.className = 'key-status ' + (a ? 'on' : 'off');
+    el.textContent = a
+      ? '✅ ' + (a.provider === 'gemini' ? 'Gemini' : 'OpenAI') + 'キー登録済み：ページ内チャットが直接AI応答します'
+      : '未登録：内蔵アドバイザー＋外部AIボタンで利用できます';
+  }
+  $('geminiKey').addEventListener('input', e => { localStorage.setItem(LS_GEMINI, e.target.value.trim()); refreshKeyStatus(); });
+  $('openaiKey').addEventListener('input', e => { localStorage.setItem(LS_OPENAI, e.target.value.trim()); refreshKeyStatus(); });
+  $('geminiKey').value = localStorage.getItem(LS_GEMINI) || '';
+  $('openaiKey').value = localStorage.getItem(LS_OPENAI) || '';
+
+  // 内蔵アドバイザーの会話応答（キーワードに応じたヒューリスティック回答）
+  function builtInReply(q) {
+    const s = aiSnapshot();
+    const pV = (s.probs.settingV || 0) * 100, pHi = ((s.probs.setting4 || 0) + (s.probs.settingV || 0)) * 100;
+    const p12 = ((s.probs.setting1 || 0) + (s.probs.setting2 || 0)) * 100;
+    const t = q;
+    if (/ヤメ|やめ|撤退|止め|にげ|逃げ/.test(t)) {
+      if (pHi >= 50) return '設定4・V合算が ' + pHi.toFixed(1) + '% と高めなので、差枚が致命的でなければ続行余地あり。ただし信頼度 ' + Math.round(s.confidence * 100) + '% なので、次のREG終了ハイビスカス（白以外なら設定2以上濃厚）を見て判断するのが安全です。';
+      if (p12 >= 60) return '設定1・2合算 ' + p12.toFixed(1) + '% と低設定濃厚。差枚がマイナスならヤメ時を推奨します。';
+      return '現時点では判定保留（設定4・V合算 ' + pHi.toFixed(1) + '%）。もう少し回してREG終了時ハイビスカスとREG中スイカを集めるのが得策です。';
+    }
+    if (/続行|押し|ツッパ|伸ば| bet|ベット/i.test(t)) {
+      if (pV >= 35 || pHi >= 70) return '高設定期待が強い状況です。設定V単体 ' + pV.toFixed(1) + '%・4V合算 ' + pHi.toFixed(1) + '% なら続行・全ツッパ推奨レベルです。';
+      if (pHi >= 50) return '設定4・V合算 ' + pHi.toFixed(1) + '% で続行圏内。ただし差枚 ' + (s.hasDiff ? (s.diff >= 0 ? '+' : '') + s.diff.toLocaleString() + '枚' : '未入力') + ' を確認し、マイナスが深い場合は様子見に。';
+      return 'まだ判定材料が不足しています（信頼度 ' + Math.round(s.confidence * 100) + '%）。総G ' + s.d.totalG.toLocaleString() + 'G 時点では様子見が無難です。';
+    }
+    if (/設定V|設定４|V濃厚|設定4/.test(t)) {
+      return '設定V単体期待度は ' + pV.toFixed(1) + '%、設定4・V合算は ' + pHi.toFixed(1) + '% です。' +
+        (pV >= 35 ? 'V濃厚圏。REG終了時の虹ハイビスカスやサイドランプ寒色が出ればさらに確度UP。' :
+         pHi >= 50 ? '高設定圏。あと少しでV期待が育つ可能性があります。' : '現状はVまでの期待は薄め。データ蓄積を。');
+    }
+    if (/スイカ|ベル|リプレイ/.test(t)) {
+      const rs = state.lamps.regSuika || 0;
+      return 'REG中スイカは現在 ' + rs + ' 回カウント。理論は設定1:1/110 → V:1/64 と高設定ほど出やすい重要指標です。ベルは差枚逆算で 1/' +
+        (s.d.bell != null ? '—' : '—') + '（手動入力 ' + (s.d.bell == null ? 'なし' : s.d.bell + '回') + '）。小役は薄く広く見るのがコツです。';
+    }
+    if (/ランプ|ハイビスカス|点滅/.test(t)) {
+      return 'ランプ履歴: ' + s.lamps + '。REG終了時ハイビスカスが白以外なら設定1除外済み、虹なら設定1〜3除外で4・Vのみに再計算されています。サイドランプは設定4=暖色寄り・V=寒色寄りが実戦傾向です。';
+    }
+    if (/あと|必要|目安|何G|G数/.test(t)) {
+      return '総G ' + s.d.totalG.toLocaleString() + 'G・信頼度 ' + Math.round(s.confidence * 100) + '%。液晶下部のナビ目安に『設定4・V期待度50%到達までの必要BIG/REG回数』が表示されています。2000G超で精度が安定します。';
+    }
+    // デフォルト: 現状サマリー＋誘導
+    const top = HanahanaCalc.SETTING_ORDER.reduce((a, k) => ((s.probs[k] || 0) > (s.probs[a] || 0) ? k : a), HanahanaCalc.SETTING_ORDER[0]);
+    return '現在の状況: 総G ' + s.d.totalG.toLocaleString() + 'G / BIG ' + s.d.big + ' / REG ' + s.d.reg +
+      ' / 最有力は ' + HanahanaCalc.HANAHANA_SETTINGS[top].name + '（' + ((s.probs[top] || 0) * 100).toFixed(1) + '%）。' +
+      '設定4・V合算 ' + pHi.toFixed(1) + '%・信頼度 ' + Math.round(s.confidence * 100) + '%。\n' +
+      '『ヤメるべき？』『設定V濃厚？』『スイカの見方』など具体的に聞くか、下のChatGPT/Geminiボタンでプロ級の深掘り相談ができます。（APIキー登録でこの欄が直接AI応答に切替わります）';
+  }
+
+  // リモートAI呼出（登録済みキー優先: Gemini → OpenAI）
+  async function askRemoteAI(question) {
+    const a = activeApiKey();
+    if (!a) return null;
+    const context = 'あなたはパチスロ『ニューキングハナハナV-30』の設定判別に詳しいプロアドバイザーです。以下の実戦データを踏まえ、日本語で簡潔かつ実践的に助言してください。\n\n' + buildAiPrompt();
+    if (a.provider === 'gemini') {
+      const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(a.key);
+      const r = await fetch(url, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: context + '\n\nユーザーの質問: ' + question }] }], generationConfig: { temperature: 0.7 } })
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error && j.error.message ? j.error.message : 'Gemini APIエラー(' + r.status + ')');
+      return j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts
+        ? j.candidates[0].content.parts.map(p => p.text || '').join('') : '（応答が空でした）';
+    }
+    // OpenAI
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + a.key },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini', temperature: 0.7,
+        messages: [
+          { role: 'system', content: context },
+          { role: 'user', content: question }
+        ]
+      })
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error && j.error.message ? j.error.message : 'OpenAI APIエラー(' + r.status + ')');
+    return j.choices && j.choices[0] ? j.choices[0].message.content : '（応答が空でした）';
+  }
+
+  async function sendChat() {
+    const input = $('chatInput');
+    const q = input.value.trim();
+    if (!q) return;
+    input.value = '';
+    pushChat('user', q);
+    const a = activeApiKey();
+    if (!a) {
+      pushChat('bot', builtInReply(q));
+      return;
+    }
+    const pending = pushChat('bot typing', 'AIが考えています…', 'bot typing');
+    try {
+      const ans = await askRemoteAI(q);
+      pending.classList.remove('typing');
+      pending.textContent = ans || '（応答が空でした）';
+    } catch (e) {
+      pending.classList.remove('typing');
+      pending.classList.add('err');
+      pending.textContent = '⚠️ ' + (a.provider === 'openai'
+        ? 'OpenAI APIはブラウザからの直接呼出に対応していない場合があります（CORS制限）。Geminiキーの登録をおすすめします。'
+        : '') + 'エラー: ' + e.message + '\n\n→ 内蔵アドバイザーの回答:\n' + builtInReply(q);
+    }
+    $('chatList').scrollTop = $('chatList').scrollHeight;
+  }
+  $('chatSend').addEventListener('click', sendChat);
+  $('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
+
   function openAiPanel() {
-    $('aiPrompt').textContent = buildAiPrompt();
     $('advisorList').innerHTML = quickAdvice().join('');
+    refreshKeyStatus();
+    // ChatGPTダイレクト起動URL（現在データのプロンプトをURLエンコード）
+    $('aiChatgpt').href = 'https://chatgpt.com/?q=' + encodeURIComponent(buildAiPrompt());
+    $('aiGemini').href = 'https://gemini.google.com/';
+    $('chatList').innerHTML = '';
+    pushChat('bot', '🤖 こんにちは。現在の台データをもとに相談に乗ります。\n下の入力欄に質問するか、ChatGPT/Geminiボタンでプロ級AIに直接相談できます。\n（例:「この台ヤメるべき？」「設定V濃厚？」）');
     $('aiModal').style.display = 'flex';
   }
-  // AIリンク共通：クリック時にプロンプトを自動コピーしてから遷移
+  // AIリンク共通：クリック時にプロンプトを自動コピー
   function copyPrompt() {
-    const text = $('aiPrompt').textContent || buildAiPrompt();
+    const text = buildAiPrompt();
     const done = () => sfxChime(false);
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
@@ -2062,9 +2259,8 @@
     try { document.execCommand('copy'); } catch (e) {}
     ta.remove(); if (cb) cb();
   }
-  ['aiChatgpt', 'aiGemini'].forEach(id => {
-    $(id).addEventListener('click', copyPrompt);
-  });
+  $('aiChatgpt').addEventListener('click', copyPrompt);
+  $('aiGemini').addEventListener('click', copyPrompt);
   $('aiCopy').addEventListener('click', () => {
     copyPrompt();
     $('aiCopy').textContent = '✅ コピーしました！';
