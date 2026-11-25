@@ -29,7 +29,7 @@
       #05060a;
     color: var(--txt);
     font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
-    padding: 14px 10px calc(30px + env(safe-area-inset-bottom));
+    padding: calc(52px + env(safe-area-inset-top)) 10px calc(30px + env(safe-area-inset-bottom));
     user-select: none;
   }
 
@@ -103,14 +103,41 @@
   }
   .lamp-strip { display: flex; gap: 5px; align-items: center; flex: 0 0 auto; }
 
-  /* iPhone実機幅（〜430px）でのロゴ・ランプ重なり防止 */
+  /* iPhone実機幅（〜430px）でのロゴ・ランプ・液晶視認性最適化 */
   @media (max-width: 430px) {
+    body { padding-left: 6px; padding-right: 6px; }
+    .cabinet { padding: 12px 10px 16px; border-radius: 22px; }
+    .cabinet::before, .cabinet::after { width: 12px; }
+    .cabinet-inner { padding: 0 2px; }
     .logo-text { font-size: 1.0rem; }
     .logo-sub { font-size: .56rem; }
     .hibiscus-svg { width: 38px; height: 38px; }
     .lamp { width: 13px; height: 13px; }
     .lamp-strip { gap: 4px; }
     .logo-block { gap: 6px; }
+    .mid-deck { padding: 0 6px; margin: 10px 0 8px; }
+    .reel-frame { padding: 8px; border-radius: 15px; }
+    .reel-frame::before, .reel-frame::after { width: 6px; }
+    .lcd { padding: 10px 8px 12px; }
+    .prob-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:4px; }
+    .prob-item { padding: 6px 2px; min-width: 0; overflow: hidden; }
+    .prob-item .p-val { font-size: clamp(.66rem, 2.8vw, .88rem); white-space: nowrap; }
+    .key-metrics { gap: 6px; }
+    .km-box { padding: 8px 4px; min-width: 0; }
+    .km-box .km-name { font-size: clamp(.52rem, 2.4vw, .6rem); letter-spacing: .02em; white-space: nowrap; }
+    .km-box .km-val { font-size: clamp(1.2rem, 5.5vw, 1.45rem); }
+    .set-row { gap: 5px; }
+    .set-row .sname { flex: 0 0 46px; font-size: .7rem; }
+    .bar-pct { flex: 0 0 40px; font-size: .7rem; }
+    .judge-banner { font-size: .8rem; padding: 8px 8px; }
+    .payout-line { font-size: .62rem; }
+    .mute-btn { padding: 7px 10px; font-size: .7rem; }
+    .admin-bar { padding: 6px 8px; gap: 5px; font-size: .62rem; max-width: calc(100vw - 108px); white-space: nowrap; overflow: hidden; }
+    .admin-bar button { padding: 4px 7px; font-size: .6rem; }
+  }
+  @media (max-width: 390px) {
+    .prob-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+    .prob-item .p-val { font-size: .85rem; }
   }
   @media (max-width: 360px) {
     .logo-text { font-size: .88rem; }
@@ -794,9 +821,30 @@
       masterGain.gain.value = muted ? 0 : 1;
       masterGain.connect(audioCtx.destination);
     }
-    if (audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
   }
+
+  // iOS Safari対策: suspended状態ならresume完了後に鳴らす
+  function withAudio(fn) {
+    if (muted) return;
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => { try { fn(ctx); } catch (e) {} }).catch(() => {});
+    } else {
+      fn(ctx);
+    }
+  }
+
+  // 初回ユーザージェスチャーでAudioContextを事前解放（ミュート解除済みの場合）
+  ['pointerdown', 'touchstart'].forEach(ev => {
+    document.addEventListener(ev, () => {
+      if (!muted) {
+        const ctx = ensureAudio();
+        if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+      }
+    }, { once: true, passive: true });
+  });
 
   function tone(freq, t0, dur, type, vol, slideTo) {
     const ctx = audioCtx;
@@ -813,33 +861,33 @@
 
   // リール停止ボタン風の軽快なタップ音
   function sfxTap(soft) {
-    if (muted) return;
-    const ctx = ensureAudio(); if (!ctx) return;
-    const t = ctx.currentTime;
-    tone(soft ? 900 : 1350, t, 0.06, 'square', soft ? 0.08 : 0.13, soft ? 500 : 750);
-    tone(2400, t, 0.03, 'sine', 0.05);
+    withAudio(ctx => {
+      const t = ctx.currentTime;
+      tone(soft ? 900 : 1350, t, 0.06, 'square', soft ? 0.08 : 0.13, soft ? 500 : 750);
+      tone(2400, t, 0.03, 'sine', 0.05);
+    });
   }
 
   // ハイビスカス点灯風キラキラチャイム。fancy=trueで虹・紫などの豪華な上昇和音
   function sfxChime(fancy) {
-    if (muted) return;
-    const ctx = ensureAudio(); if (!ctx) return;
-    const t0 = ctx.currentTime;
-    const notes = fancy
-      ? [1046.5, 1318.5, 1568.0, 2093.0, 2637.0]   // C6 E6 G6 C7 E7 の豪華アルペジオ
-      : [1318.5, 1568.0, 2093.0];                  // E6 G6 C7
-    notes.forEach((f, i) => tone(f, t0 + i * 0.065, 0.45, 'sine', 0.14));
-    if (fancy) tone(4186, t0 + notes.length * 0.065, 0.5, 'sine', 0.07); // キラッとした高音の余韻
+    withAudio(ctx => {
+      const t0 = ctx.currentTime;
+      const notes = fancy
+        ? [1046.5, 1318.5, 1568.0, 2093.0, 2637.0]   // C6 E6 G6 C7 E7 の豪華アルペジオ
+        : [1318.5, 1568.0, 2093.0];                  // E6 G6 C7
+      notes.forEach((f, i) => tone(f, t0 + i * 0.065, 0.45, 'sine', 0.14));
+      if (fancy) tone(4186, t0 + notes.length * 0.065, 0.5, 'sine', 0.07); // キラッとした高音の余韻
+    });
   }
 
   // リセット時の下降クリアトーン
   function sfxClear() {
-    if (muted) return;
-    const ctx = ensureAudio(); if (!ctx) return;
-    const t = ctx.currentTime;
-    tone(880, t, 0.18, 'triangle', 0.15, 660);
-    tone(660, t + 0.16, 0.18, 'triangle', 0.15, 440);
-    tone(440, t + 0.32, 0.35, 'triangle', 0.12, 220);
+    withAudio(ctx => {
+      const t = ctx.currentTime;
+      tone(880, t, 0.18, 'triangle', 0.15, 660);
+      tone(660, t + 0.16, 0.18, 'triangle', 0.15, 440);
+      tone(440, t + 0.32, 0.35, 'triangle', 0.12, 220);
+    });
   }
 
   function refreshMuteBtn() {
@@ -942,16 +990,20 @@
         }
         update();
       };
-      btn.addEventListener('click', () => bump(1));
-      // 長押しで-1
-      let timer = null;
-      const start = () => { timer = setTimeout(() => { bump(-1); timer = 'repeat'; }, 550); };
-      const stop = () => {
-        if (timer && timer !== 'repeat') clearTimeout(timer);
-        else if (timer === 'repeat') { /* 長押し中の連続減算は省略 */ }
-        timer = null;
+      let timer = null, longPressed = false;
+      btn.addEventListener('click', () => {
+        if (longPressed) { longPressed = false; return; }
+        bump(1);
+      });
+      // 長押しで-1（touchend後のclick誤発火を防止）
+      const start = () => {
+        longPressed = false;
+        timer = setTimeout(() => { longPressed = true; bump(-1); timer = null; }, 550);
       };
-      btn.addEventListener('touchstart', start);
+      const stop = () => {
+        if (timer) { clearTimeout(timer); timer = null; }
+      };
+      btn.addEventListener('touchstart', start, { passive: true });
       btn.addEventListener('touchend', stop);
       btn.addEventListener('touchcancel', stop);
       btn.addEventListener('mousedown', start);
@@ -968,7 +1020,9 @@
     HanahanaCalc.SETTING_ORDER.forEach((key, i) => {
       const s = HanahanaCalc.HANAHANA_SETTINGS[key];
       const row = document.createElement('div');
+      row.id = 'setrow_' + key;
       row.className = 'set-row' + (state.excluded[key] ? ' excluded' : '');
+      row.style.cursor = 'pointer';
       const theory = HanahanaCalc.THEORETICAL_PAYOUT[key];
       row.innerHTML =
         '<span class="sname">' + s.name + '<small>理論 ' + theory.toFixed(1) + '%</small></span>' +
@@ -979,13 +1033,15 @@
       const chip = document.createElement('button');
       chip.className = 'excl-chip' + (state.excluded[key] ? ' on' : '');
       chip.textContent = s.name;
-      chip.addEventListener('click', () => {
+      const toggleExcl = () => {
         state.excluded[key] = !state.excluded[key];
         chip.classList.toggle('on', state.excluded[key]);
         row.classList.toggle('excluded', state.excluded[key]);
         sfxTap(true);
         update();
-      });
+      };
+      row.addEventListener('click', toggleExcl);
+      chip.addEventListener('click', toggleExcl);
       chips.appendChild(chip);
     });
   }
@@ -1086,9 +1142,7 @@
       $('lendCustom').value = '';
       document.querySelectorAll('#lendChips .excl-chip').forEach(b => b.classList.toggle('on', b === btn));
       sfxTap(true);
-      updateInvestResult();
-      updateDiffResult();
-      save();
+      update();
     });
   });
   $('lendCustom').addEventListener('input', e => {
@@ -1100,17 +1154,17 @@
       document.querySelectorAll('#lendChips .excl-chip').forEach(b =>
         b.classList.toggle('on', parseInt(b.dataset.lend, 10) === state.lendMode));
     }
-    updateInvestResult(); updateDiffResult(); save();
+    update();
   });
   $('investPlus').addEventListener('click', () => {
     state.investYen = numOf(state.investYen) + 1;
     $('investYen').value = state.investYen;
     sfxTap();
-    updateInvestResult(); updateDiffResult(); save();
+    update();
   });
-  $('investYen').addEventListener('input', e => { state.investYen = e.target.value; updateInvestResult(); updateDiffResult(); save(); });
-  $('medals').addEventListener('input', e => { state.medals = e.target.value; updateInvestResult(); updateDiffResult(); save(); });
-  $('inputMedals').addEventListener('input', e => { state.inputMedals = e.target.value; update(); save(); });
+  $('investYen').addEventListener('input', e => { state.investYen = e.target.value; update(); });
+  $('medals').addEventListener('input', e => { state.medals = e.target.value; update(); });
+  $('inputMedals').addEventListener('input', e => { state.inputMedals = e.target.value; update(); });
 
   // 自動除外トグル（REG終了時ランプによる自動除外の手動解除/復帰）
   $('autoExChip').addEventListener('click', () => {
@@ -1126,24 +1180,26 @@
   const BELLMODEL = {
     BIG_PAYOUT: 312,        // BIG純増獲得枚数
     REG_PAYOUT: 130,        // REG純増獲得枚数
+    BET_PER_GAME: 3,        // 通常時1Gあたり投入枚数
     REPLAY_DENOM: 7.3,      // 通常時リプレイ確率の分母
-    REPLAY_PAYOUT: 5,       // リプレイ1回あたりの払い出し枚数（目安）
-    OTHER_PER_GAME: 0.8     // チェリー/スイカ/その他小役の平均払い出し（枚/G・目安）
+    REPLAY_PAYOUT: 3,       // リプレイ1回あたりの再遊技相当枚数
+    OTHER_PER_GAME: 0.4     // チェリー/スイカ/その他小役の平均払い出し（枚/G・目安）
   };
-  // 投入枚数（機械割・差枚計算の共通ソース）
+  // 投入枚数（機械割計算用: 手動入力 > 総G×3枚 > 投資枚数）
   function investMedalsCount() {
     if (state.diffMode === 'invest') return numOf(state.investYen) * lendRate();
     return numOf(state.inputMedals);
   }
-  // ベル推定の内訳を計算して返す
+  // ベル推定の内訳を計算して返す（総獲得 = 総G×3 + 差枚数 からボーナス・リプレイ・小役を控除）
   function bellBreakdown(diff, d) {
+    const totalOut = d.totalG * BELLMODEL.BET_PER_GAME + diff;
     const bonusGain = numOf(d.big) * BELLMODEL.BIG_PAYOUT + numOf(d.reg) * BELLMODEL.REG_PAYOUT;
     const replayGain = (d.totalG / BELLMODEL.REPLAY_DENOM) * BELLMODEL.REPLAY_PAYOUT;
     const otherGain = d.totalG * BELLMODEL.OTHER_PER_GAME;
-    const bellMedals = diff - bonusGain - replayGain - otherGain;
+    const bellMedals = totalOut - bonusGain - replayGain - otherGain;
     const payout = Math.max(1, numOf($('bellPayout').value) || 6);
     const estBell = bellMedals > 0 ? bellMedals / payout : 0;
-    return { bonusGain, replayGain, otherGain, bellMedals, estBell, payout };
+    return { totalOut, bonusGain, replayGain, otherGain, bellMedals, estBell, payout };
   }
   function updateDiffResult() {
     const diff = effectiveDiff();
@@ -1155,26 +1211,24 @@
     if (state.diffMode === 'direct' && $('diffCount').value === '') {
       el.innerHTML = '差枚数を入力するとベル確率を推定します'; return;
     }
-    if (diff === 0) { el.innerHTML = '差枚数が0です'; return; }
-    if (diff < 0) { el.innerHTML = '差枚数がマイナス（' + diff.toLocaleString() + '枚）です'; return; }
     if (d.totalG <= 0) { el.innerHTML = '総ゲーム数が不足しています'; return; }
     const b = bellBreakdown(diff, d);
     if (b.bellMedals <= 0) {
       el.innerHTML = '補正項目（ボーナス' + Math.round(b.bonusGain) + '枚＋リプレイ' + Math.round(b.replayGain) +
-        '枚＋小役' + Math.round(b.otherGain) + '枚）で差枚数を超過。ベル推定不可';
+        '枚＋小役' + Math.round(b.otherGain) + '枚）が総獲得を超過。ベル推定不可';
       return;
     }
     const denom = d.totalG / b.estBell;
-    el.innerHTML = '差枚 ' + diff.toLocaleString() + '枚 − ボーナス' + Math.round(b.bonusGain) +
+    el.innerHTML = '総獲得 ' + Math.round(b.totalOut).toLocaleString() + '枚 − ボーナス' + Math.round(b.bonusGain) +
       ' − リプレイ' + Math.round(b.replayGain) + ' − 小役' + Math.round(b.otherGain) +
       ' = ベル推定 <b>' + b.estBell.toFixed(1) + '回</b> → ベル <b>1/' + denom.toFixed(2) + '</b>';
   }
-  $('diffCount').addEventListener('input', () => { state.diffCount = $('diffCount').value; updateDiffResult(); save(); });
+  $('diffCount').addEventListener('input', () => { state.diffCount = $('diffCount').value; update(); });
   $('bellPayout').addEventListener('input', () => { state.bellPayout = $('bellPayout').value; updateDiffResult(); save(); });
   $('applyBell').addEventListener('click', () => {
     const diff = effectiveDiff();
     const d = activeData();
-    if (diff <= 0 || d.totalG <= 0) { updateDiffResult(); return; }
+    if (d.totalG <= 0) { updateDiffResult(); return; }
     const b = bellBreakdown(diff, d);
     if (b.bellMedals <= 0) { updateDiffResult(); return; }
     const est = Math.max(0, Math.round(b.estBell));
@@ -1194,6 +1248,9 @@
     try { return JSON.parse(localStorage.getItem(LS_HISTORY)) || []; }
     catch (e) { return []; }
   }
+  function escHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  }
   function renderHistory() {
     const list = $('histList');
     const h = getHistory();
@@ -1205,7 +1262,7 @@
       const idx = h.length - 1 - i;
       const dt = r.date ? new Date(r.date).toLocaleString('ja-JP', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
       return '<div class="hist-item">' +
-        '<div class="h-top"><span>台 ' + (r.table || '—') + ' ' + (r.memo ? '／ ' + r.memo : '') + '</span>' +
+        '<div class="h-top"><span>台 ' + escHtml(r.table || '—') + ' ' + (r.memo ? '／ ' + escHtml(r.memo) : '') + '</span>' +
         '<button class="mini-plus" style="flex:0 0 52px;font-size:.62rem;padding:5px 0;" data-hdel="' + idx + '">削除</button></div>' +
         '<div class="h-sub">' + dt + ' ／ 総G ' + (r.totalG || 0).toLocaleString() +
         ' ／ BIG ' + (r.big || 0) + ' ／ REG ' + (r.reg || 0) + ' ／ ベル ' + (r.bell || '—') + '</div>' +
@@ -1347,17 +1404,19 @@
     HanahanaCalc.SETTING_ORDER.forEach((key, i) => {
       const p = probabilities[key] || 0;
       const pct = (p * 100).toFixed(1);
+      const isEx = Boolean(state.excluded[key] || autoExcluded.includes(key));
+      const row = $('setrow_' + key);
+      if (row) row.classList.toggle('excluded', isEx);
       const bar = $('bar_' + key);
       if (bar) {
         bar.style.width = pct + '%';
-        const auto = autoExcluded.includes(key);
-        bar.classList.toggle('dim', state.excluded[key] || auto);
+        bar.classList.toggle('dim', isEx);
         bar.style.background = NEON[i % NEON.length];
       }
       const pctEl = $('pct_' + key);
       if (pctEl) {
         pctEl.textContent = pct + '%';
-        pctEl.style.color = (state.excluded[key] || autoExcluded.includes(key)) ? '#5a5a64' : '#dff3ff';
+        pctEl.style.color = isEx ? '#5a5a64' : '#dff3ff';
       }
     });
 
@@ -1370,17 +1429,22 @@
     // ナビ目安: 設定4・V合算50%到達までの必要ボーナス数
     $('navHint').innerHTML = computeNavHint(d, probabilities);
 
-    // 実戦機械割: 獲得枚数 = 投入枚数 + 差枚数 → 機械割 = 獲得/投入
+    // 実戦機械割: 総投入枚数（手動入力 > 総G×3枚 > 投資枚数）と差枚数から算出
     const investN = investMedalsCount();
     const diffN = effectiveDiff();
+    const hasDiffInput = (state.diffMode === 'invest' && (state.investYen !== '' || state.medals !== ''))
+                      || (state.diffMode === 'direct' && state.diffCount !== '');
+    const totalBet = (state.diffMode === 'direct' && numOf(state.inputMedals) > 0)
+      ? numOf(state.inputMedals)
+      : (d.totalG > 0 && hasDiffInput ? d.totalG * 3 : investN);
     const pl = $('payoutLine');
-    if (investN > 0) {
-      const gain = investN + diffN;
-      const rate = gain / investN * 100;
+    if (totalBet > 0 && (hasDiffInput || investN > 0)) {
+      const gain = totalBet + diffN;
+      const rate = gain / totalBet * 100;
       pl.innerHTML = '実戦機械割 <b class="' + (rate >= 100 ? 'over' : 'under') + '">' + rate.toFixed(1) +
-        '%</b>（投入 ' + investN.toLocaleString() + '枚 → 獲得 ' + gain.toLocaleString() + '枚）';
+        '%</b>（投入 ' + totalBet.toLocaleString() + '枚 → 獲得 ' + gain.toLocaleString() + '枚）';
     } else {
-      pl.innerHTML = '投入枚数を入力すると実戦機械割を表示します';
+      pl.innerHTML = '総G数と差枚数（または投入枚数）で実戦機械割を表示';
     }
 
     // 2大指標: 設定4・V合算 / 設定V単体

@@ -36,8 +36,15 @@ const HANAHANA_WEIGHTS = {
 // サンプル信頼度: 総G数に応じた事後確率と事前分布の混合率
 // 0〜500G≒低信頼 / 2000G≒中信頼 / 4000G以上≒高信頼(90%)
 function confidenceFor(totalG) {
-  if (!isFinite(totalG) || totalG <= 0) return 0;
-  return Math.min(0.9, 0.2 + (totalG / 4000) * 0.7);
+  const g = Number(totalG);
+  if (!isFinite(g) || g <= 0) return 0;
+  return Math.min(0.9, 0.2 + (g / 4000) * 0.7);
+}
+
+// 非負整数への安全な変換（NaN / Infinity / 負数 / 非数値文字列を 0 に正規化）
+function toNonNegInt(v) {
+  const n = Number(v);
+  return isFinite(n) && n > 0 ? Math.floor(n) : 0;
 }
 
 // ハイビスカスランプ色別の設定別対数重み（回数×この値を尤度へ加算）
@@ -163,23 +170,28 @@ function calculateHanahanaProbabilities(state, options) {
   const w = HANAHANA_WEIGHTS;
   const lamps = (state && state.lamps) || {};
 
-  const n = Math.max(0, (state && state.totalG) || 0);
-  const big = Math.max(0, (state && state.big) || 0);
-  const reg = Math.max(0, (state && state.reg) || 0);
-  const bell = state && state.bell != null ? Math.max(0, state.bell) : null;
+  const n = toNonNegInt(state && state.totalG);
+  const rawBig = toNonNegInt(state && state.big);
+  const rawReg = toNonNegInt(state && state.reg);
+  const rawBell = state && state.bell != null && state.bell !== '' ? toNonNegInt(state.bell) : null;
+  // 入力途中の整合性崩れ（k > n）で全設定が -Infinity になるのを防ぐためクランプ
+  const big = n > 0 ? Math.min(n, rawBig) : rawBig;
+  const reg = n > 0 ? Math.min(n, rawReg) : rawReg;
+  const bell = rawBell != null && n > 0 ? Math.min(n, rawBell) : rawBell;
 
   // REG中スイカの母数は REG回数 × 10G
   const regSuikaN = reg * 10;
-  const regSuikaK = Math.max(0, lamps.regSuika || 0);
-  const bigSuikaK = Math.max(0, lamps.bigSuika || 0);
-  const retroFlashK = Math.max(0, lamps.retroFlash || 0);
-  const retroSoundK = Math.max(0, lamps.retroSound || 0);
+  const rawRegSuikaK = toNonNegInt(lamps.regSuika);
+  const regSuikaK = regSuikaN > 0 ? Math.min(regSuikaN, rawRegSuikaK) : rawRegSuikaK;
+  const bigSuikaK = toNonNegInt(lamps.bigSuika);
+  const retroFlashK = toNonNegInt(lamps.retroFlash);
+  const retroSoundK = toNonNegInt(lamps.retroSound);
 
   // サイドランプ色別カウント → 3カテゴリ集計
   const side = lamps.side || {};
   const sideCat = { cold: 0, warm: 0, rainbow: 0 };
   for (const color of SIDE_LAMP_COLORS) {
-    sideCat[SIDE_LAMP_CAT_OF[color]] += Math.max(0, side[color] || 0);
+    sideCat[SIDE_LAMP_CAT_OF[color]] += toNonNegInt(side[color]);
   }
 
   // REG終了時ハイビスカスによる自動除外（設定2以上濃厚法則）
@@ -187,8 +199,8 @@ function calculateHanahanaProbabilities(state, options) {
   //  - 虹が1回でも           → 設定1・2・3を除外（設定4・Vのみで再計算）
   const hibReg = lamps.hibiscusReg || {};
   const nonWhiteReg = ['blue','yellow','green','purple','rainbow']
-    .some(c => (hibReg[c] || 0) > 0);
-  const rainbowReg = (hibReg.rainbow || 0) > 0;
+    .some(c => toNonNegInt(hibReg[c]) > 0);
+  const rainbowReg = toNonNegInt(hibReg.rainbow) > 0;
   const hardExcluded = new Set(opts.excluded || []);
   if (opts.autoEx !== false) {
     if (nonWhiteReg) hardExcluded.add('setting1');
@@ -220,9 +232,9 @@ function calculateHanahanaProbabilities(state, options) {
 
     const hibBig = lamps.hibiscusBig || {};
     for (const c of ['white','blue','yellow','green','purple','rainbow']) {
-      const cb = Math.max(0, hibBig[c] || 0);
+      const cb = toNonNegInt(hibBig[c]);
       if (cb > 0) ll += cb * HIBISCUS_BIG_LOGW[key][c];
-      const cr = Math.max(0, hibReg[c] || 0);
+      const cr = toNonNegInt(hibReg[c]);
       if (cr > 0) ll += cr * HIBISCUS_REG_LOGW[key][c];
     }
     const cats = SIDE_LAMP_CAT[key];
@@ -270,7 +282,11 @@ function calculateHanahanaProbabilities(state, options) {
         probabilities[k] = confidence * post[k] + (1 - confidence) * (pnorm[k] || 0);
         fsum += probabilities[k];
       }
-      if (fsum > 0) for (const k of allowed) probabilities[k] /= fsum;
+      if (fsum > 0 && isFinite(fsum)) {
+        for (const k of allowed) probabilities[k] /= fsum;
+      } else {
+        for (const k of allowed) probabilities[k] = 1 / allowed.length;
+      }
       for (const k of SETTING_ORDER) if (!allowed.includes(k)) probabilities[k] = 0;
     }
   }
